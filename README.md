@@ -1,2 +1,0 @@
-# PostMate
-SMM SaaS
