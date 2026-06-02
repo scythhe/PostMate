@@ -1,7 +1,6 @@
 import { ArrowLeft, ArrowRight, ImagePlus, Plus, Quote, Star, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { demoBusinessAssets } from '../lib/mockGenerator'
-import { BrandLogo } from './Navbar'
 import { ProgressIndicator } from './ProgressIndicator'
 import type { BusinessAssets as BusinessAssetsData, BusinessProfile, PhotoCategory } from '../types'
 
@@ -82,28 +81,25 @@ export function BusinessAssets({
 
   return (
     <main className="min-h-screen bg-[#f7f4ee] text-zinc-950">
-      <nav className="border-b border-zinc-950/10 bg-white">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <BrandLogo />
-            <div className="hidden h-8 w-px bg-zinc-200 sm:block" />
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Phase 2</p>
-              <p className="font-semibold tracking-tight">{business.businessName} assets</p>
-            </div>
-          </div>
-          <button className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-600 transition hover:text-zinc-950" onClick={onBack} type="button">
-            <ArrowLeft size={16} /> Back to setup
-          </button>
+      <section className="bg-[#f7f4ee] px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <ProgressIndicator availableSteps={[1, 2]} currentStep={2} onStepClick={(step) => (step === 1 ? onBack() : undefined)} />
         </div>
-      </nav>
+      </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-14">
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:px-8 lg:py-10">
         <div className="grid gap-6">
-          <ProgressIndicator currentStep={2} />
           <header className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Business assets</p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight">Give PostMate real material to work with.</h1>
+            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Business assets</p>
+                <h1 className="mt-3 text-4xl font-semibold tracking-tight">Give PostMate real material to work with.</h1>
+                <p className="mt-2 text-sm font-semibold text-zinc-500">{business.businessName}</p>
+              </div>
+              <button className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-600 transition hover:text-zinc-950" onClick={onBack} type="button">
+                <ArrowLeft size={16} /> Back
+              </button>
+            </div>
             <p className="mt-4 max-w-2xl leading-8 text-zinc-600">
               Add dishes, photos, reviews, and special events. Everything stays in React state for this session.
             </p>
@@ -176,7 +172,7 @@ export function BusinessAssets({
             onClick={() => onSubmit(assets)}
             type="button"
           >
-            Continue to dashboard <ArrowRight size={17} />
+            Continue to generator <ArrowRight size={17} />
           </button>
         </aside>
       </section>

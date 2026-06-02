@@ -7,11 +7,12 @@ import {
   Captions,
   Check,
   Clock3,
+  Download,
   Hash,
+  ImagePlus,
   Layers3,
   MessageSquareText,
   Palette,
-  PenLine,
   Sparkles,
   Store,
   WandSparkles,
@@ -19,8 +20,7 @@ import {
 import type { ReactNode } from 'react'
 import { BusinessSetup } from './BusinessSetup'
 import { ButtonLink } from './Navbar'
-import { ProgressIndicator } from './ProgressIndicator'
-import type { BusinessProfile, Feature, Step } from '../types'
+import type { BusinessProfile, Feature } from '../types'
 
 const features: Feature[] = [
   { icon: CalendarDays, title: 'Weekly content plans', description: 'Turn one offer into a balanced calendar of posts, reels, stories, and reminders.' },
@@ -31,41 +31,38 @@ const features: Feature[] = [
   { icon: Layers3, title: 'Reusable examples', description: 'Save proven post ideas and refresh them for new campaigns, seasons, and events.' },
 ]
 
-const steps: Step[] = [
-  { label: '01', title: 'Describe the business', description: 'Add the industry, location, target audience, tone, colors, and current offer.' },
-  { label: '02', title: 'Generate the campaign', description: 'PostMate creates a weekly plan with captions, hooks, hashtags, and creative direction.' },
-  { label: '03', title: 'Review and publish', description: 'Choose the strongest post, adjust the copy, and hand it to the owner or team.' },
-]
-
 const planItems = ['Monday: behind the counter reel', 'Wednesday: offer teaser post', 'Friday: seasonal latte promo']
 const hashtags = ['#portlandcafe', '#localcoffee', '#brunchspot', '#supportlocal']
 
 export function LandingPage({
   onBusinessSubmit,
+  onStartDemo,
   onUseDemoData,
+  showMarketing = true,
 }: {
   onBusinessSubmit: (profile: BusinessProfile) => void
+  onStartDemo: () => void
   onUseDemoData: () => void
+  showMarketing?: boolean
 }) {
   return (
     <main className="min-h-screen bg-[#f7f4ee] text-zinc-950">
-      <Hero />
-      <ProblemSection />
-      <HowItWorks />
-      <FeaturesSection />
-      <ExamplePreviewSection />
-      <section className="bg-white px-4 pt-12 sm:px-6 lg:px-8" id="setup">
-        <div className="mx-auto max-w-7xl">
-          <ProgressIndicator currentStep={1} />
-        </div>
-      </section>
+      {showMarketing ? (
+        <>
+          <Hero onStartDemo={onStartDemo} />
+          <ProblemSection />
+          <HowItWorks />
+          <FeaturesSection />
+          <ExamplePreviewSection />
+        </>
+      ) : null}
       <BusinessSetup onSubmit={onBusinessSubmit} onUseDemoData={onUseDemoData} />
-      <CtaSection />
+      {showMarketing ? <CtaSection /> : null}
     </main>
   )
 }
 
-function Hero() {
+function Hero({ onStartDemo }: { onStartDemo: () => void }) {
   return (
     <header className="relative overflow-hidden border-b border-zinc-950/10 bg-[#ebe6dc]">
       <div className="absolute inset-0 hero-grid opacity-70" />
@@ -79,9 +76,9 @@ function Hero() {
             PostMate helps local businesses generate Instagram posts, captions, hashtags, and weekly content plans from one simple business profile.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <ButtonLink href="#example" variant="dark">
-              View example <ArrowRight size={17} />
-            </ButtonLink>
+            <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-emerald-950" onClick={onStartDemo} type="button">
+              Try demo in 30 seconds <ArrowRight size={17} />
+            </button>
             <ButtonLink href="#features" variant="light">
               Explore features
             </ButtonLink>
@@ -163,24 +160,59 @@ function CaptionPanel() {
 }
 
 function ProblemSection() {
-  const pains = ['No time to plan a feed', 'Generic captions feel off-brand', 'Promos get posted too late']
+  const pains = [
+    {
+      icon: Clock3,
+      title: 'No time to post',
+      description: 'Owners are busy with operations, staff, customers, and daily problems.',
+      stat: '3-5 hours/week lost',
+      accent: 'bg-amber-50 text-amber-700',
+    },
+    {
+      icon: CalendarDays,
+      title: 'Random content',
+      description: 'Posts happen only when someone remembers, so the feed feels inconsistent.',
+      stat: 'No weekly plan',
+      accent: 'bg-sky-50 text-sky-700',
+    },
+    {
+      icon: BarChart3,
+      title: 'SMM is expensive',
+      description: 'Many small businesses cannot afford a monthly social media manager.',
+      stat: 'High monthly cost',
+      accent: 'bg-rose-50 text-rose-700',
+    },
+    {
+      icon: Palette,
+      title: 'Good place, weak page',
+      description: 'The real business looks better than its Instagram presence.',
+      stat: 'Missed first impression',
+      accent: 'bg-violet-50 text-violet-700',
+    },
+  ]
 
   return (
     <SectionShell id="problem">
-      <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+      <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
         <SectionHeading
           eyebrow="The problem"
           title="Local owners need consistent marketing, but social media becomes another job."
           description="Hiring an SMM can be expensive before the business has proven its content rhythm. PostMate gives owners a practical starting point that still feels polished."
         />
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           {pains.map((pain) => (
-            <article className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm" key={pain}>
-              <span className="grid size-10 place-items-center rounded-md bg-rose-50 text-rose-700">
-                <PenLine size={18} />
-              </span>
-              <h3 className="mt-5 text-lg font-semibold tracking-tight">{pain}</h3>
-              <p className="mt-2 text-sm leading-6 text-zinc-600">PostMate turns scattered ideas into structured, ready-to-review content.</p>
+            <article className="group relative overflow-hidden rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-zinc-950/5" key={pain.title}>
+              <div className="absolute right-4 top-4 h-16 w-16 rounded-full bg-stone-100 transition group-hover:scale-110" />
+              <div className="relative">
+                <div className="flex items-start justify-between gap-4">
+                  <span className={`grid size-11 place-items-center rounded-md ${pain.accent}`}>
+                    <pain.icon size={20} />
+                  </span>
+                  <span className="rounded-full bg-zinc-950 px-3 py-1 text-xs font-semibold text-white">{pain.stat}</span>
+                </div>
+                <h3 className="mt-5 text-xl font-semibold tracking-tight">{pain.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-zinc-600">{pain.description}</p>
+              </div>
             </article>
           ))}
         </div>
@@ -190,24 +222,99 @@ function ProblemSection() {
 }
 
 function HowItWorks() {
+  const flowSteps = [
+    {
+      icon: Store,
+      label: '01',
+      title: 'Create business profile',
+      details: ['Name', 'Industry', 'Location', 'Tone', 'Audience', 'Brand colors'],
+    },
+    {
+      icon: ImagePlus,
+      label: '02',
+      title: 'Add real assets',
+      details: ['Menu items', 'Photos', 'Reviews', 'Offers', 'Events'],
+    },
+    {
+      icon: WandSparkles,
+      label: '03',
+      title: 'Generate content',
+      details: ['Weekly plan', 'Captions', 'Hashtags', 'Story text'],
+    },
+    {
+      icon: Download,
+      label: '04',
+      title: 'Export post',
+      details: ['Branded preview', 'PNG download'],
+    },
+  ]
+
   return (
     <SectionShell id="how" tone="white">
       <SectionHeading
         centered
         eyebrow="How it works"
-        title="From business details to a ready Instagram campaign."
-        description="The flow is intentionally simple for busy teams: describe the business, generate a plan, then refine the posts worth publishing."
+        title="A real product flow from local business assets to export-ready posts."
+        description="PostMate does not start from a blank prompt. It uses the business profile and real assets to shape the plan, copy, and preview."
       />
-      <div className="mt-10 grid gap-4 md:grid-cols-3">
-        {steps.map((step) => (
-          <article className="rounded-lg border border-zinc-200 bg-stone-50 p-6" key={step.label}>
-            <span className="text-sm font-semibold text-emerald-700">{step.label}</span>
-            <h3 className="mt-4 text-xl font-semibold tracking-tight">{step.title}</h3>
-            <p className="mt-3 leading-7 text-zinc-600">{step.description}</p>
+      <div className="mt-10 grid gap-4 lg:grid-cols-4">
+        {flowSteps.map((step, index) => (
+          <article className="relative rounded-lg border border-zinc-200 bg-stone-50 p-5 shadow-sm" key={step.label}>
+            {index < flowSteps.length - 1 ? (
+              <span className="absolute -right-3 top-1/2 z-10 hidden size-6 -translate-y-1/2 place-items-center rounded-full border border-zinc-200 bg-white text-zinc-400 lg:grid">
+                <ArrowRight size={14} />
+              </span>
+            ) : null}
+            <div className="flex items-center justify-between gap-4">
+              <span className="grid size-11 place-items-center rounded-md bg-emerald-950 text-white">
+                <step.icon size={20} />
+              </span>
+              <span className="text-sm font-semibold text-emerald-700">{step.label}</span>
+            </div>
+            <h3 className="mt-5 text-lg font-semibold tracking-tight">{step.title}</h3>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {step.details.map((detail) => (
+                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-zinc-600 ring-1 ring-zinc-200" key={detail}>
+                  {detail}
+                </span>
+              ))}
+            </div>
           </article>
         ))}
       </div>
+      <WorkflowMockup />
     </SectionShell>
+  )
+}
+
+function WorkflowMockup() {
+  const mockupSteps = [
+    { title: 'Profile', items: ['Maison Marani', 'Luxury restaurant', 'Emerald + gold'] },
+    { title: 'Assets', items: ['3 menu items', '4 photo categories', '2 reviews'] },
+    { title: 'Plan', items: ['7 post ideas', 'Captions', 'Hashtags'] },
+    { title: 'Post Preview', items: ['Square creative', 'Brand colors', 'PNG export'] },
+  ]
+
+  return (
+    <div className="mt-8 rounded-lg border border-zinc-200 bg-zinc-950 p-3 shadow-xl shadow-zinc-950/10">
+      <div className="grid gap-3 rounded-md bg-[#f8f6f0] p-3 md:grid-cols-4">
+        {mockupSteps.map((step, index) => (
+          <div className="rounded-md border border-zinc-200 bg-white p-4" key={step.title}>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-semibold tracking-tight">{step.title}</h3>
+              {index < mockupSteps.length - 1 ? <ArrowRight className="hidden text-zinc-300 md:block" size={17} /> : null}
+            </div>
+            <div className="mt-4 grid gap-2">
+              {step.items.map((item) => (
+                <div className="rounded-md bg-stone-50 px-3 py-2 text-sm font-medium text-zinc-600" key={item}>
+                  {item}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -271,7 +378,7 @@ function CtaSection() {
         <p className="mx-auto mt-5 max-w-2xl leading-8 text-zinc-600">PostMate is ready for SaaS demo flows, onboarding, and future backend integration.</p>
         <div className="mt-8 flex justify-center">
           <ButtonLink href="#setup" variant="dark">
-            Start with PostMate <ArrowRight size={17} />
+            Start custom setup <ArrowRight size={17} />
           </ButtonLink>
         </div>
       </div>

@@ -18,7 +18,7 @@ export function ContentPlan({
         </div>
         <span className="rounded-full bg-stone-100 px-3 py-1 text-sm font-semibold text-zinc-600">Deterministic logic</span>
       </div>
-      <div className="mt-6 grid gap-4 md:grid-cols-2">
+      <div className="mt-6 grid gap-3">
         {ideas.map((idea, index) => (
           <ContentPlanCard idea={idea} isSelected={index === selectedIndex} key={`${idea.day}-${idea.title}`} onSelect={() => onSelect(index)} />
         ))}
@@ -28,9 +28,11 @@ export function ContentPlan({
 }
 
 function ContentPlanCard({ idea, isSelected, onSelect }: { idea: ContentIdea; isSelected: boolean; onSelect: () => void }) {
+  const shortDescription = idea.description.length > 108 ? `${idea.description.slice(0, 105).trim()}...` : idea.description
+
   return (
     <button
-      className={`rounded-lg border p-5 text-left transition ${
+      className={`rounded-lg border p-4 text-left transition ${
         isSelected
           ? 'border-emerald-800 bg-emerald-950 text-white shadow-lg shadow-emerald-950/15'
           : 'border-zinc-200 bg-[#f7f4ee] text-zinc-950 hover:border-emerald-800/40 hover:bg-white'
@@ -38,15 +40,21 @@ function ContentPlanCard({ idea, isSelected, onSelect }: { idea: ContentIdea; is
       onClick={onSelect}
       type="button"
     >
-      <div className="flex items-center justify-between gap-3">
-        <span className={`text-sm font-semibold ${isSelected ? 'text-amber-200' : 'text-emerald-700'}`}>{idea.day}</span>
-        <span className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ${isSelected ? 'bg-white/10 text-white ring-white/20' : 'bg-white text-zinc-600 ring-zinc-200'}`}>
-          {idea.postType}
+      <div className="grid gap-3 sm:grid-cols-[7rem_1fr_auto] sm:items-center">
+        <div>
+          <span className={`text-sm font-semibold ${isSelected ? 'text-amber-200' : 'text-emerald-700'}`}>{idea.day}</span>
+          <span className={`mt-2 block w-fit rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${isSelected ? 'bg-white/10 text-white ring-white/20' : 'bg-white text-zinc-600 ring-zinc-200'}`}>
+            {idea.postType}
+          </span>
+        </div>
+        <div>
+          <h3 className="text-base font-semibold tracking-tight">{idea.title}</h3>
+          <p className={`mt-1 text-sm leading-5 ${isSelected ? 'text-white/75' : 'text-zinc-600'}`}>{shortDescription}</p>
+        </div>
+        <span className={`inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-semibold ${isSelected ? 'bg-white text-zinc-950' : 'bg-zinc-950 text-white'}`}>
+          {isSelected ? 'Selected' : 'Generate caption'}
         </span>
       </div>
-      <h3 className="mt-4 text-lg font-semibold tracking-tight">{idea.title}</h3>
-      <p className={`mt-2 text-sm leading-6 ${isSelected ? 'text-white/75' : 'text-zinc-600'}`}>{idea.description}</p>
-      <p className={`mt-4 text-sm font-semibold ${isSelected ? 'text-white' : 'text-zinc-950'}`}>CTA: {idea.cta}</p>
     </button>
   )
 }

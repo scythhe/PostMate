@@ -1,40 +1,58 @@
-import { Download, WandSparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Download, WandSparkles } from 'lucide-react'
 import { toPng } from 'html-to-image'
 import { useRef, useState } from 'react'
 import { CaptionGenerator } from './CaptionGenerator'
 import { ContentPlan } from './ContentPlan'
 import { InstagramPostPreview } from './InstagramPostPreview'
-import { BrandLogo } from './Navbar'
 import { ProgressIndicator } from './ProgressIndicator'
-import { SavedPosts } from './SavedPosts'
 import { generateCaptionPackage, generateContentPlan } from '../lib/mockGenerator'
 import type { BusinessAssets, BusinessProfile, SavedPost } from '../types'
 
-export function Dashboard({ assets, business, onReset }: { assets: BusinessAssets; business: BusinessProfile; onReset: () => void }) {
+export function Dashboard({
+  assets,
+  business,
+  isDemoMode = false,
+  onBackToAssets,
+  onBackToProfile,
+  onReset,
+  onSavedPostsChange,
+  savedPosts,
+}: {
+  assets: BusinessAssets
+  business: BusinessProfile
+  isDemoMode?: boolean
+  onBackToAssets: () => void
+  onBackToProfile: () => void
+  onReset: () => void
+  onSavedPostsChange: (posts: SavedPost[]) => void
+  savedPosts: SavedPost[]
+}) {
   const contentPlan = generateContentPlan(business, assets)
   const previewRef = useRef<HTMLDivElement>(null)
+  const exportSectionRef = useRef<HTMLDivElement>(null)
   const [selectedIdeaIndex, setSelectedIdeaIndex] = useState(0)
-  const [savedPosts, setSavedPosts] = useState<SavedPost[]>([])
   const [isExporting, setIsExporting] = useState(false)
   const [exportError, setExportError] = useState<string | null>(null)
+  const [currentStep, setCurrentStep] = useState(3)
   const selectedIdea = contentPlan[selectedIdeaIndex]
   const captionPackage = generateCaptionPackage(business, selectedIdea)
 
   const saveSelectedPost = () => {
     const id = `${selectedIdea.day}-${selectedIdea.title}`
-    setSavedPosts((current) => {
-      const nextPost = { id, idea: selectedIdea, captionPackage }
-      const existingIndex = current.findIndex((post) => post.id === id)
+    const existingPost = savedPosts.find((post) => post.id === id)
+    const nextPost = { id, idea: selectedIdea, captionPackage, createdAt: existingPost?.createdAt ?? new Date().toISOString() }
+    const existingIndex = savedPosts.findIndex((post) => post.id === id)
 
-      if (existingIndex === -1) {
-        return [nextPost, ...current]
-      }
+    if (existingIndex === -1) {
+      onSavedPostsChange([nextPost, ...savedPosts])
+      return
+    }
 
-      return current.map((post, index) => (index === existingIndex ? nextPost : post))
-    })
+    onSavedPostsChange(savedPosts.map((post, index) => (index === existingIndex ? nextPost : post)))
   }
 
   const downloadPreview = async () => {
+    setCurrentStep(4)
     if (!previewRef.current) {
       setExportError('Preview is not ready yet. Please try again.')
       return
@@ -63,57 +81,82 @@ export function Dashboard({ assets, business, onReset }: { assets: BusinessAsset
     }
   }
 
+  const goToExport = () => {
+    setCurrentStep(4)
+    exportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const handleStepClick = (step: number) => {
+    if (step === 1) {
+      onBackToProfile()
+      return
+    }
+
+    if (step === 2) {
+      onBackToAssets()
+      return
+    }
+
+    if (step === 3) {
+      setCurrentStep(3)
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      return
+    }
+
+    if (step === 4) {
+      goToExport()
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#f7f4ee] text-zinc-950">
-      <nav className="border-b border-zinc-950/10 bg-white">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <a className="flex items-center" href="#">
-            <BrandLogo />
-          </a>
-          <button className="text-sm font-semibold text-zinc-600 transition hover:text-zinc-950" onClick={onReset} type="button">
-            Edit setup
-          </button>
+      <section className="bg-[#f7f4ee] px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <ProgressIndicator availableSteps={[1, 2, 3, 4]} currentStep={currentStep} onStepClick={handleStepClick} />
         </div>
-      </nav>
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_0.85fr] lg:px-8 lg:py-14">
+      </section>
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_0.85fr] lg:px-8 lg:py-10">
         <div className="grid gap-6">
-          <ProgressIndicator currentStep={3} />
           <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Dashboard</p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-tight">{business.businessName}</h1>
-            <p className="mt-4 max-w-2xl leading-8 text-zinc-600">
-              {business.industry} in {business.location}. Tone: {business.tone}.
-            </p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {['Content plan', 'Caption', 'Hashtags'].map((item) => (
-              <article className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm" key={item}>
-                <WandSparkles className="text-emerald-700" size={20} />
-                <h2 className="mt-4 text-lg font-semibold">{item}</h2>
-                <p className="mt-2 text-sm leading-6 text-zinc-600">Generated from your profile and business assets.</p>
-              </article>
-            ))}
-          </div>
-          <article className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold">Generated caption</h2>
-            <p className="mt-3 leading-7 text-zinc-700">
-              Step inside {business.businessName} for {business.offer.toLowerCase()}. Crafted for {business.targetAudience.toLowerCase()}, with a voice that feels {business.tone.toLowerCase()}.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2 text-sm text-zinc-600">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Generator</p>
+                  {isDemoMode ? <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-100">Demo mode: using sample restaurant data</span> : null}
+                </div>
+                <h1 className="mt-3 text-4xl font-semibold tracking-tight">{business.businessName}</h1>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
+                  {business.industry} in {business.location}. Tone: {business.tone}.
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-2 rounded-md bg-zinc-950 px-3 py-2 text-sm font-semibold text-white">
+                <WandSparkles size={16} /> Ready to export
+              </span>
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2 text-sm text-zinc-600">
               <span className="rounded-full bg-stone-100 px-3 py-1">{assets.menuItems.length} menu items</span>
               <span className="rounded-full bg-stone-100 px-3 py-1">{assets.photos.length} photos</span>
               <span className="rounded-full bg-stone-100 px-3 py-1">{assets.reviews.length} reviews</span>
               <span className="rounded-full bg-stone-100 px-3 py-1">{assets.events.length} events</span>
             </div>
-          </article>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-stone-50" onClick={onBackToAssets} type="button">
+                <ArrowLeft size={16} /> Back
+              </button>
+              <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-emerald-950" onClick={goToExport} type="button">
+                Go to export <ArrowRight size={16} />
+              </button>
+              <button className="inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold text-zinc-600 transition hover:bg-stone-100 hover:text-zinc-950" onClick={onReset} type="button">
+                Edit setup
+              </button>
+            </div>
+          </div>
+          <CaptionGenerator assetSummary={`Generated from ${assets.menuItems.length} menu items, ${assets.photos.length} photos, ${assets.reviews.length} reviews, ${assets.events.length} events`} idea={selectedIdea} output={captionPackage} onSave={saveSelectedPost} />
           <ContentPlan ideas={contentPlan} selectedIndex={selectedIdeaIndex} onSelect={setSelectedIdeaIndex} />
-          <CaptionGenerator idea={selectedIdea} output={captionPackage} onSave={saveSelectedPost} />
-          <SavedPosts business={business} posts={savedPosts} />
           <DemoSummary assets={assets} business={business} />
         </div>
-        <div className="lg:sticky lg:top-20 lg:self-start">
+        <div className="lg:sticky lg:top-20 lg:self-start" ref={exportSectionRef}>
           <div className="grid gap-3">
-            <ProgressIndicator currentStep={4} />
             <InstagramPostPreview business={business} exportRef={previewRef} idea={selectedIdea} />
             <button
               className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-zinc-950 px-5 text-sm font-semibold text-white shadow-lg shadow-zinc-950/10 transition hover:bg-emerald-950 disabled:cursor-not-allowed disabled:opacity-60"

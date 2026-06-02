@@ -1,11 +1,14 @@
-import { Check } from 'lucide-react'
+import { Check, Copy } from 'lucide-react'
+import { useState } from 'react'
 import type { CaptionPackage, ContentIdea } from '../types'
 
 export function CaptionGenerator({
+  assetSummary,
   idea,
   output,
   onSave,
 }: {
+  assetSummary: string
   idea: ContentIdea
   output: CaptionPackage
   onSave: () => void
@@ -18,6 +21,7 @@ export function CaptionGenerator({
           <h2 className="mt-2 text-2xl font-semibold tracking-tight">
             {idea.day}: {idea.title}
           </h2>
+          <p className="mt-2 text-sm font-semibold text-zinc-500">{assetSummary}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full bg-stone-100 px-3 py-1 text-sm font-semibold text-zinc-600">{idea.postType}</span>
@@ -27,13 +31,21 @@ export function CaptionGenerator({
         </div>
       </div>
       <div className="mt-6 grid gap-4">
+        <article className="rounded-lg border border-zinc-200 bg-[#f7f4ee] p-4">
+          <p className="text-sm font-semibold text-zinc-950">Selected idea details</p>
+          <p className="mt-2 text-sm leading-6 text-zinc-600">{idea.description}</p>
+          <p className="mt-3 text-sm font-semibold text-zinc-950">CTA: {idea.cta}</p>
+        </article>
         <GeneratedTextBlock label="Caption" text={output.caption} />
         <div className="grid gap-4 md:grid-cols-2">
           <GeneratedTextBlock label="Short caption" text={output.shortCaption} />
           <GeneratedTextBlock label="Story text" text={output.storyText} />
         </div>
         <div className="rounded-lg border border-zinc-200 bg-[#f7f4ee] p-4">
-          <p className="text-sm font-semibold text-zinc-950">Hashtags</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-zinc-950">Hashtags</p>
+            <CopyButton text={output.hashtags.join(' ')} />
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             {output.hashtags.map((tag) => (
               <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-zinc-600 ring-1 ring-zinc-200" key={tag}>
@@ -54,8 +66,27 @@ export function CaptionGenerator({
 function GeneratedTextBlock({ label, text }: { label: string; text: string }) {
   return (
     <article className="rounded-lg border border-zinc-200 bg-[#f7f4ee] p-4">
-      <p className="text-sm font-semibold text-zinc-950">{label}</p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-zinc-950">{label}</p>
+        <CopyButton text={text} />
+      </div>
       <p className="mt-2 text-sm leading-6 text-zinc-600">{text}</p>
     </article>
+  )
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+
+  const copyText = async () => {
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1400)
+  }
+
+  return (
+    <button className="inline-flex h-8 items-center gap-1.5 rounded-md bg-white px-2.5 text-xs font-semibold text-zinc-600 ring-1 ring-zinc-200 transition hover:text-zinc-950" onClick={copyText} type="button">
+      <Copy size={13} /> {copied ? 'Copied' : 'Copy'}
+    </button>
   )
 }

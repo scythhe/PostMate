@@ -53,7 +53,7 @@ export function BusinessSetup({
           <div className="mt-6 flex flex-col gap-3 border-t border-zinc-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm leading-6 text-zinc-600">Profile is stored in local React state only.</p>
             <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-emerald-950" type="submit">
-              Continue to dashboard <ArrowRight size={17} />
+              Continue to assets <ArrowRight size={17} />
             </button>
           </div>
         </form>

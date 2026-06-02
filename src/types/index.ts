@@ -31,6 +31,7 @@ export type SavedPost = {
   id: string
   idea: ContentIdea
   captionPackage: CaptionPackage
+  createdAt: string
 }
 
 export type MenuItem = {
@@ -74,4 +75,16 @@ export type Step = {
   label: string
   title: string
   description: string
+}
+
+export type AuthUser = {
+  name: string
+  email: string
+  password: string
+}
+
+export type PostMateUserData = {
+  businessProfile: BusinessProfile | null
+  businessAssets: BusinessAssets | null
+  savedPosts: SavedPost[]
 }

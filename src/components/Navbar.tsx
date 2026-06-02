@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-export function Navbar() {
+export function Navbar({ onSignIn, onSignUp, onTryDemo }: { onSignIn: () => void; onSignUp: () => void; onTryDemo: () => void }) {
   return (
     <nav className="sticky top-0 z-50 border-b border-zinc-950/10 bg-[#f7f4ee]/90 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -22,9 +22,17 @@ export function Navbar() {
             Example
           </a>
         </div>
-        <ButtonLink href="#cta" variant="dark">
-          Get early access
-        </ButtonLink>
+        <div className="flex items-center gap-2">
+          <button className="hidden h-11 rounded-md px-3 text-sm font-semibold text-zinc-500 transition hover:text-zinc-950 sm:inline-flex sm:items-center" onClick={onSignIn} type="button">
+            Sign in
+          </button>
+          <button className="hidden h-11 rounded-md px-3 text-sm font-semibold text-zinc-500 transition hover:text-zinc-950 sm:inline-flex sm:items-center" onClick={onSignUp} type="button">
+            Sign up
+          </button>
+          <button className="inline-flex h-11 items-center justify-center rounded-md bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-emerald-950" onClick={onTryDemo} type="button">
+            Try demo
+          </button>
+        </div>
       </div>
     </nav>
   )
