@@ -1,4 +1,4 @@
-# PostMate
+# PostMate (DELAYED)
 
 PostMate is an AI-assisted SMM SaaS prototype for local businesses. It helps small businesses generate Instagram content plans, captions, and branded post previews without hiring a full-time SMM manager.
 
