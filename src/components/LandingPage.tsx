@@ -9,7 +9,6 @@ import {
   Clock3,
   Download,
   Hash,
-  ImagePlus,
   Layers3,
   MessageSquareText,
   Palette,
@@ -18,9 +17,8 @@ import {
   WandSparkles,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { BusinessSetup } from './BusinessSetup'
-import { ButtonLink } from './Navbar'
-import type { BusinessProfile, Feature } from '../types'
+import { Navbar } from './Navbar'
+import type { Feature } from '../types'
 
 const features: Feature[] = [
   { icon: CalendarDays, title: 'Weekly content plans', description: 'Turn one offer into a balanced calendar of posts, reels, stories, and reminders.' },
@@ -35,34 +33,28 @@ const planItems = ['Monday: behind the counter reel', 'Wednesday: offer teaser p
 const hashtags = ['#portlandcafe', '#localcoffee', '#brunchspot', '#supportlocal']
 
 export function LandingPage({
-  onBusinessSubmit,
-  onStartDemo,
-  onUseDemoData,
-  showMarketing = true,
+  onGetStarted,
+  onTryDemo,
 }: {
-  onBusinessSubmit: (profile: BusinessProfile) => void
-  onStartDemo: () => void
-  onUseDemoData: () => void
-  showMarketing?: boolean
+  onGetStarted: () => void
+  onTryDemo: () => void
 }) {
   return (
-    <main className="min-h-screen bg-[#f7f4ee] text-zinc-950">
-      {showMarketing ? (
-        <>
-          <Hero onStartDemo={onStartDemo} />
-          <ProblemSection />
-          <HowItWorks />
-          <FeaturesSection />
-          <ExamplePreviewSection />
-        </>
-      ) : null}
-      <BusinessSetup onSubmit={onBusinessSubmit} onUseDemoData={onUseDemoData} />
-      {showMarketing ? <CtaSection /> : null}
-    </main>
+    <div className="min-h-screen bg-[#f7f4ee] text-zinc-950">
+      <Navbar onGetStarted={onGetStarted} onTryDemo={onTryDemo} />
+      <main>
+        <Hero onGetStarted={onGetStarted} onTryDemo={onTryDemo} />
+        <ProblemSection />
+        <HowItWorks />
+        <FeaturesSection />
+        <ExamplePreviewSection />
+        <CtaSection onGetStarted={onGetStarted} />
+      </main>
+    </div>
   )
 }
 
-function Hero({ onStartDemo }: { onStartDemo: () => void }) {
+function Hero({ onGetStarted, onTryDemo }: { onGetStarted: () => void; onTryDemo: () => void }) {
   return (
     <header className="relative overflow-hidden border-b border-zinc-950/10 bg-[#ebe6dc]">
       <div className="absolute inset-0 hero-grid opacity-70" />
@@ -73,15 +65,23 @@ function Hero({ onStartDemo }: { onStartDemo: () => void }) {
             Instagram content without hiring an SMM.
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-700">
-            PostMate helps local businesses generate Instagram posts, captions, hashtags, and weekly content plans from one simple business profile.
+            Describe your business in a few sentences. PostMate generates a full week of Instagram posts, captions, and hashtags — instantly.
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <button className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-emerald-950" onClick={onStartDemo} type="button">
-              Try demo in 30 seconds <ArrowRight size={17} />
+            <button
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-emerald-950"
+              onClick={onGetStarted}
+              type="button"
+            >
+              Get started free <ArrowRight size={17} />
             </button>
-            <ButtonLink href="#features" variant="light">
-              Explore features
-            </ButtonLink>
+            <button
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-zinc-950/10 bg-white px-5 text-sm font-semibold text-zinc-950 transition hover:bg-stone-50"
+              onClick={onTryDemo}
+              type="button"
+            >
+              Try demo in 30 seconds
+            </button>
           </div>
         </div>
         <div className="mx-auto mt-12 max-w-6xl">
@@ -226,25 +226,25 @@ function HowItWorks() {
     {
       icon: Store,
       label: '01',
-      title: 'Create business profile',
-      details: ['Name', 'Industry', 'Location', 'Tone', 'Audience', 'Brand colors'],
-    },
-    {
-      icon: ImagePlus,
-      label: '02',
-      title: 'Add real assets',
-      details: ['Menu items', 'Photos', 'Reviews', 'Offers', 'Events'],
+      title: 'Describe your business',
+      details: ['Name', 'What you offer', 'Location', 'Brand colors'],
     },
     {
       icon: WandSparkles,
+      label: '02',
+      title: 'AI generates your plan',
+      details: ['7-day content plan', 'Captions', 'Hashtags', 'Story text'],
+    },
+    {
+      icon: MessageSquareText,
       label: '03',
-      title: 'Generate content',
-      details: ['Weekly plan', 'Captions', 'Hashtags', 'Story text'],
+      title: 'Review and copy',
+      details: ['Select any day', 'Copy captions', 'Copy hashtags', 'Save posts'],
     },
     {
       icon: Download,
       label: '04',
-      title: 'Export post',
+      title: 'Export your post',
       details: ['Branded preview', 'PNG download'],
     },
   ]
@@ -367,7 +367,7 @@ function ExamplePreviewSection() {
   )
 }
 
-function CtaSection() {
+function CtaSection({ onGetStarted }: { onGetStarted: () => void }) {
   return (
     <section className="bg-[#f7f4ee] px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl rounded-lg border border-zinc-950/10 bg-white p-8 text-center shadow-xl shadow-zinc-950/5 sm:p-12" id="cta">
@@ -375,11 +375,17 @@ function CtaSection() {
         <h2 className="mx-auto mt-5 max-w-3xl text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
           Give every local business a smarter way to show up on Instagram.
         </h2>
-        <p className="mx-auto mt-5 max-w-2xl leading-8 text-zinc-600">PostMate is ready for SaaS demo flows, onboarding, and future backend integration.</p>
+        <p className="mx-auto mt-5 max-w-2xl leading-8 text-zinc-600">
+          Describe your business in a sentence. PostMate handles the rest — captions, hashtags, weekly plan, and a branded post preview ready to download.
+        </p>
         <div className="mt-8 flex justify-center">
-          <ButtonLink href="#setup" variant="dark">
-            Start custom setup <ArrowRight size={17} />
-          </ButtonLink>
+          <button
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-emerald-950"
+            onClick={onGetStarted}
+            type="button"
+          >
+            Start for free <ArrowRight size={17} />
+          </button>
         </div>
       </div>
     </section>

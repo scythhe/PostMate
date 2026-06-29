@@ -1,204 +1,382 @@
-import { ArrowLeft, ArrowRight, Download, WandSparkles } from 'lucide-react'
+import { ArrowLeft, Check, Copy, Download, Loader2, RefreshCw, Sparkles, WandSparkles } from 'lucide-react'
 import { toPng } from 'html-to-image'
-import { useRef, useState } from 'react'
-import { CaptionGenerator } from './CaptionGenerator'
-import { ContentPlan } from './ContentPlan'
+import { useEffect, useRef, useState } from 'react'
 import { InstagramPostPreview } from './InstagramPostPreview'
-import { ProgressIndicator } from './ProgressIndicator'
-import { generateCaptionPackage, generateContentPlan } from '../lib/mockGenerator'
-import type { BusinessAssets, BusinessProfile, SavedPost } from '../types'
+import { generateContent } from '../lib/aiGenerator'
+import type { BusinessProfile, ContentIdea, GeneratedContent, GeneratedDay, QuickProfile, SavedPost } from '../types'
 
 export function Dashboard({
-  assets,
-  business,
-  isDemoMode = false,
-  onBackToAssets,
-  onBackToProfile,
-  onReset,
-  onSavedPostsChange,
+  profile,
   savedPosts,
+  onSavedPostsChange,
+  onBack,
 }: {
-  assets: BusinessAssets
-  business: BusinessProfile
-  isDemoMode?: boolean
-  onBackToAssets: () => void
-  onBackToProfile: () => void
-  onReset: () => void
-  onSavedPostsChange: (posts: SavedPost[]) => void
+  profile: QuickProfile
   savedPosts: SavedPost[]
+  onSavedPostsChange: (posts: SavedPost[]) => void
+  onBack: () => void
 }) {
-  const contentPlan = generateContentPlan(business, assets)
-  const previewRef = useRef<HTMLDivElement>(null)
-  const exportSectionRef = useRef<HTMLDivElement>(null)
-  const [selectedIdeaIndex, setSelectedIdeaIndex] = useState(0)
+  const [content, setContent] = useState<GeneratedContent | null>(null)
+  const [isGenerating, setIsGenerating] = useState(true)
+  const [selectedIndex, setSelectedIndex] = useState(0)
   const [isExporting, setIsExporting] = useState(false)
-  const [exportError, setExportError] = useState<string | null>(null)
-  const [currentStep, setCurrentStep] = useState(3)
-  const selectedIdea = contentPlan[selectedIdeaIndex]
-  const captionPackage = generateCaptionPackage(business, selectedIdea)
+  const previewRef = useRef<HTMLDivElement>(null)
 
-  const saveSelectedPost = () => {
-    const id = `${selectedIdea.day}-${selectedIdea.title}`
-    const existingPost = savedPosts.find((post) => post.id === id)
-    const nextPost = { id, idea: selectedIdea, captionPackage, createdAt: existingPost?.createdAt ?? new Date().toISOString() }
-    const existingIndex = savedPosts.findIndex((post) => post.id === id)
-
-    if (existingIndex === -1) {
-      onSavedPostsChange([nextPost, ...savedPosts])
-      return
-    }
-
-    onSavedPostsChange(savedPosts.map((post, index) => (index === existingIndex ? nextPost : post)))
+  const runGeneration = () => {
+    setIsGenerating(true)
+    setContent(null)
+    generateContent(profile)
+      .then(setContent)
+      .finally(() => setIsGenerating(false))
   }
 
-  const downloadPreview = async () => {
-    setCurrentStep(4)
-    if (!previewRef.current) {
-      setExportError('Preview is not ready yet. Please try again.')
-      return
+  useEffect(() => {
+    runGeneration()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (isGenerating) return <LoadingState />
+  if (!content || content.days.length === 0) return <ErrorState onBack={onBack} onRetry={runGeneration} />
+
+  const selectedDay = content.days[selectedIndex] ?? content.days[0]
+  const business = profileToBusiness(profile, content)
+
+  const selectedIdea: ContentIdea = {
+    day: selectedDay.day,
+    postType: selectedDay.postType,
+    title: selectedDay.title,
+    description: selectedDay.description,
+    cta: selectedDay.cta,
+  }
+
+  const savePost = (day: GeneratedDay) => {
+    const id = `${day.day}-${day.title}`
+    const post: SavedPost = {
+      id,
+      idea: {
+        day: day.day,
+        postType: day.postType,
+        title: day.title,
+        description: day.description,
+        cta: day.cta,
+      },
+      captionPackage: {
+        caption: day.caption,
+        shortCaption: day.shortCaption,
+        hashtags: day.hashtags,
+        storyText: day.storyText,
+        cta: day.cta,
+      },
+      createdAt: savedPosts.find((p) => p.id === id)?.createdAt ?? new Date().toISOString(),
     }
+    const existingIndex = savedPosts.findIndex((p) => p.id === id)
+    if (existingIndex === -1) {
+      onSavedPostsChange([post, ...savedPosts])
+    } else {
+      onSavedPostsChange(savedPosts.map((p, i) => (i === existingIndex ? post : p)))
+    }
+  }
 
+  const downloadPng = async () => {
+    if (!previewRef.current) return
     setIsExporting(true)
-    setExportError(null)
-
     try {
       const dataUrl = await toPng(previewRef.current, {
         cacheBust: true,
         pixelRatio: 3,
-        backgroundColor: business.primaryColor,
+        backgroundColor: profile.primaryColor,
         canvasWidth: 1800,
         canvasHeight: 1800,
       })
-      const link = document.createElement('a')
-      link.download = `${slugify(`postmate-${business.businessName}-${selectedIdea.title}`)}.png`
-      link.href = dataUrl
-      link.click()
-    } catch (error) {
-      console.error(error)
-      setExportError('Export failed. Please try again after the preview finishes rendering.')
+      const a = document.createElement('a')
+      a.download = `postmate-${slugify(profile.businessName)}-${slugify(selectedDay.title)}.png`
+      a.href = dataUrl
+      a.click()
     } finally {
       setIsExporting(false)
     }
   }
 
-  const goToExport = () => {
-    setCurrentStep(4)
-    exportSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  }
-
-  const handleStepClick = (step: number) => {
-    if (step === 1) {
-      onBackToProfile()
-      return
-    }
-
-    if (step === 2) {
-      onBackToAssets()
-      return
-    }
-
-    if (step === 3) {
-      setCurrentStep(3)
-      window.scrollTo({ top: 0, behavior: 'smooth' })
-      return
-    }
-
-    if (step === 4) {
-      goToExport()
-    }
-  }
+  const isSaved = (day: GeneratedDay) =>
+    savedPosts.some((p) => p.id === `${day.day}-${day.title}`)
 
   return (
     <main className="min-h-screen bg-[#f7f4ee] text-zinc-950">
-      <section className="bg-[#f7f4ee] px-4 py-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <ProgressIndicator availableSteps={[1, 2, 3, 4]} currentStep={currentStep} onStepClick={handleStepClick} />
-        </div>
-      </section>
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_0.85fr] lg:px-8 lg:py-10">
-        <div className="grid gap-6">
-          <div className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Generator</p>
-                  {isDemoMode ? <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-100">Demo mode: using sample restaurant data</span> : null}
-                </div>
-                <h1 className="mt-3 text-4xl font-semibold tracking-tight">{business.businessName}</h1>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600">
-                  {business.industry} in {business.location}. Tone: {business.tone}.
-                </p>
-              </div>
-              <span className="inline-flex items-center gap-2 rounded-md bg-zinc-950 px-3 py-2 text-sm font-semibold text-white">
-                <WandSparkles size={16} /> Ready to export
-              </span>
+      {/* Header */}
+      <section className="border-b border-zinc-950/5 bg-white px-4 py-5 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Campaign</p>
+              {content.isAiGenerated ? (
+                <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
+                  <Sparkles size={11} /> Generated with AI
+                </span>
+              ) : (
+                <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-zinc-500">
+                  Local generation (add n8n webhook for real AI)
+                </span>
+              )}
             </div>
-            <div className="mt-5 flex flex-wrap gap-2 text-sm text-zinc-600">
-              <span className="rounded-full bg-stone-100 px-3 py-1">{assets.menuItems.length} menu items</span>
-              <span className="rounded-full bg-stone-100 px-3 py-1">{assets.photos.length} photos</span>
-              <span className="rounded-full bg-stone-100 px-3 py-1">{assets.reviews.length} reviews</span>
-              <span className="rounded-full bg-stone-100 px-3 py-1">{assets.events.length} events</span>
-            </div>
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-              <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-stone-50" onClick={onBackToAssets} type="button">
-                <ArrowLeft size={16} /> Back
-              </button>
-              <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-emerald-950" onClick={goToExport} type="button">
-                Go to export <ArrowRight size={16} />
-              </button>
-              <button className="inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-semibold text-zinc-600 transition hover:bg-stone-100 hover:text-zinc-950" onClick={onReset} type="button">
-                Edit setup
-              </button>
-            </div>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight">{profile.businessName}</h1>
+            <p className="mt-1 text-sm text-zinc-500">{profile.location}</p>
           </div>
-          <CaptionGenerator assetSummary={`Generated from ${assets.menuItems.length} menu items, ${assets.photos.length} photos, ${assets.reviews.length} reviews, ${assets.events.length} events`} idea={selectedIdea} output={captionPackage} onSave={saveSelectedPost} />
-          <ContentPlan ideas={contentPlan} selectedIndex={selectedIdeaIndex} onSelect={setSelectedIdeaIndex} />
-          <DemoSummary assets={assets} business={business} />
-        </div>
-        <div className="lg:sticky lg:top-20 lg:self-start" ref={exportSectionRef}>
-          <div className="grid gap-3">
-            <InstagramPostPreview business={business} exportRef={previewRef} idea={selectedIdea} />
+          <div className="flex flex-wrap gap-2">
             <button
-              className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-zinc-950 px-5 text-sm font-semibold text-white shadow-lg shadow-zinc-950/10 transition hover:bg-emerald-950 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isExporting}
-              onClick={downloadPreview}
+              className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:bg-stone-50"
+              onClick={onBack}
               type="button"
             >
-              <Download size={17} /> {isExporting ? 'Exporting PNG...' : 'Download PNG'}
+              <ArrowLeft size={15} /> Edit business
             </button>
-            {exportError ? <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{exportError}</p> : null}
+            <button
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-emerald-950"
+              onClick={runGeneration}
+              type="button"
+            >
+              <RefreshCw size={15} /> Regenerate
+            </button>
           </div>
         </div>
+      </section>
+
+      {/* Main grid */}
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_0.8fr] lg:px-8">
+        {/* Left: 7-day plan */}
+        <div className="grid gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold tracking-tight">7-day Instagram plan</h2>
+            <span className="text-sm text-zinc-500">{selectedDay.day} selected</span>
+          </div>
+          {content.days.map((day, index) => (
+            <DayCard
+              day={day}
+              isSelected={index === selectedIndex}
+              isSaved={isSaved(day)}
+              key={day.day}
+              onSelect={() => setSelectedIndex(index)}
+              onSave={() => savePost(day)}
+            />
+          ))}
+        </div>
+
+        {/* Right: sticky preview + info */}
+        <aside className="grid gap-4 lg:sticky lg:top-24 lg:self-start">
+          <InstagramPostPreview business={business} exportRef={previewRef} idea={selectedIdea} />
+          <button
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-zinc-950 px-5 text-sm font-semibold text-white shadow-lg transition hover:bg-emerald-950 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isExporting}
+            onClick={downloadPng}
+            type="button"
+          >
+            <Download size={17} /> {isExporting ? 'Exporting...' : 'Download PNG'}
+          </button>
+          <div className="rounded-lg border border-zinc-200 bg-white p-4 text-sm shadow-sm">
+            <p className="font-semibold text-zinc-950">Campaign summary</p>
+            <p className="mt-2 leading-6 text-zinc-600">{content.offer}</p>
+            <div className="mt-3 grid gap-1.5 text-xs text-zinc-500">
+              <span>Tone: {content.tone}</span>
+              <span>Audience: {content.targetAudience}</span>
+            </div>
+          </div>
+        </aside>
       </section>
     </main>
   )
 }
 
-function DemoSummary({ assets, business }: { assets: BusinessAssets; business: BusinessProfile }) {
+function DayCard({
+  day,
+  isSelected,
+  isSaved,
+  onSelect,
+  onSave,
+}: {
+  day: GeneratedDay
+  isSelected: boolean
+  isSaved: boolean
+  onSelect: () => void
+  onSave: () => void
+}) {
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-      <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Demo summary</p>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight">How PostMate generated this campaign</h2>
-      <p className="mt-4 leading-7 text-zinc-600">
-        PostMate used the {business.businessName} business profile, menu items, customer reviews, photo categories, and current offers to generate this weekly content plan, caption package, Instagram preview, and export-ready post.
-      </p>
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryStat label="Menu items" value={assets.menuItems.length} />
-        <SummaryStat label="Photos" value={assets.photos.length} />
-        <SummaryStat label="Reviews" value={assets.reviews.length} />
-        <SummaryStat label="Events/offers" value={assets.events.length} />
-      </div>
-    </section>
+    <div
+      className={`rounded-xl border transition-all ${
+        isSelected
+          ? 'border-emerald-800 bg-emerald-950 text-white shadow-lg shadow-emerald-950/15'
+          : 'border-zinc-200 bg-white text-zinc-950 hover:border-emerald-800/30 hover:shadow-md'
+      }`}
+    >
+      {/* Header row — always visible, click to select */}
+      <button className="w-full p-5 text-left" onClick={onSelect} type="button">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span
+              className={`text-sm font-semibold ${isSelected ? 'text-amber-200' : 'text-emerald-700'}`}
+            >
+              {day.day}
+            </span>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${
+                isSelected
+                  ? 'bg-white/10 text-white ring-white/20'
+                  : 'bg-stone-100 text-zinc-600 ring-zinc-200'
+              }`}
+            >
+              {day.postType}
+            </span>
+          </div>
+          <span
+            className={`text-xs font-semibold ${isSelected ? 'text-white/60' : 'text-zinc-400'}`}
+          >
+            {isSelected ? '▾ selected' : '▸ select'}
+          </span>
+        </div>
+        <h3 className="mt-2 text-base font-semibold tracking-tight">{day.title}</h3>
+        {!isSelected && (
+          <p className="mt-1 line-clamp-2 text-sm leading-5 text-zinc-500">{day.description}</p>
+        )}
+      </button>
+
+      {/* Expanded caption content */}
+      {isSelected && (
+        <div className="border-t border-white/10 px-5 pb-5 pt-4">
+          <div className="grid gap-4">
+            <CaptionBlock label="Caption" text={day.caption} light />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <CaptionBlock label="Short caption" text={day.shortCaption} light />
+              <CaptionBlock label="Story text" text={day.storyText} light />
+            </div>
+            <div className="rounded-lg bg-white/10 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-semibold">Hashtags</p>
+                <CopyBtn text={day.hashtags.join(' ')} light />
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {day.hashtags.map((tag) => (
+                  <span
+                    className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/20"
+                    key={tag}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-amber-500/20 px-4 py-3">
+              <p className="text-sm font-semibold text-amber-200">CTA: {day.cta}</p>
+              <button
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-white px-4 text-xs font-semibold text-zinc-950 transition hover:bg-stone-100"
+                onClick={onSave}
+                type="button"
+              >
+                <Check size={13} /> {isSaved ? 'Saved ✓' : 'Save post'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
-function SummaryStat({ label, value }: { label: string; value: number }) {
+function CaptionBlock({
+  label,
+  text,
+  light = false,
+}: {
+  label: string
+  text: string
+  light?: boolean
+}) {
   return (
-    <div className="rounded-md border border-zinc-200 bg-[#f7f4ee] p-4">
-      <p className="text-2xl font-semibold tracking-tight">{value}</p>
-      <p className="mt-1 text-sm font-medium text-zinc-600">{label}</p>
+    <div className={`rounded-lg p-4 ${light ? 'bg-white/10' : 'border border-zinc-200 bg-[#f7f4ee]'}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className={`text-sm font-semibold ${light ? 'text-white' : 'text-zinc-950'}`}>{label}</p>
+        <CopyBtn text={text} light={light} />
+      </div>
+      <p className={`mt-2 text-sm leading-6 ${light ? 'text-white/75' : 'text-zinc-600'}`}>{text}</p>
     </div>
   )
+}
+
+function CopyBtn({ text, light }: { text: string; light?: boolean }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1400)
+  }
+
+  return (
+    <button
+      className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition ${
+        light
+          ? 'bg-white/15 text-white hover:bg-white/25'
+          : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:text-zinc-950'
+      }`}
+      onClick={handleCopy}
+      type="button"
+    >
+      <Copy size={11} /> {copied ? 'Copied' : 'Copy'}
+    </button>
+  )
+}
+
+function LoadingState() {
+  return (
+    <main className="min-h-screen bg-[#f7f4ee]">
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-5 text-center">
+        <div className="grid size-16 place-items-center rounded-2xl bg-emerald-950 text-white shadow-xl shadow-emerald-950/20">
+          <WandSparkles size={28} />
+        </div>
+        <Loader2 className="animate-spin text-emerald-700" size={32} />
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Building your content plan...</h2>
+          <p className="mt-2 text-zinc-500">PostMate is generating 7 days of Instagram content for your business.</p>
+        </div>
+      </div>
+    </main>
+  )
+}
+
+function ErrorState({ onBack, onRetry }: { onBack: () => void; onRetry: () => void }) {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f7f4ee] text-center">
+      <h2 className="text-2xl font-semibold">Generation failed</h2>
+      <p className="max-w-sm text-zinc-500">
+        Something went wrong. Try again or go back and check your details.
+      </p>
+      <div className="flex gap-3">
+        <button
+          className="rounded-md border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700"
+          onClick={onBack}
+          type="button"
+        >
+          Back
+        </button>
+        <button
+          className="rounded-md bg-zinc-950 px-4 py-2 text-sm font-semibold text-white"
+          onClick={onRetry}
+          type="button"
+        >
+          Retry
+        </button>
+      </div>
+    </main>
+  )
+}
+
+function profileToBusiness(profile: QuickProfile, content: GeneratedContent): BusinessProfile {
+  return {
+    businessName: profile.businessName,
+    industry: 'Local business',
+    location: profile.location,
+    tone: content.tone,
+    targetAudience: content.targetAudience,
+    offer: content.offer,
+    primaryColor: profile.primaryColor,
+    secondaryColor: profile.secondaryColor,
+  }
 }
 
 function slugify(value: string) {

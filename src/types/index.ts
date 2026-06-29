@@ -1,5 +1,13 @@
 import type { LucideIcon } from 'lucide-react'
 
+export type QuickProfile = {
+  businessName: string
+  description: string
+  location: string
+  primaryColor: string
+  secondaryColor: string
+}
+
 export type BusinessProfile = {
   businessName: string
   industry: string
@@ -27,12 +35,53 @@ export type CaptionPackage = {
   cta: string
 }
 
+export type GeneratedDay = {
+  day: string
+  postType: string
+  title: string
+  description: string
+  cta: string
+  caption: string
+  shortCaption: string
+  hashtags: string[]
+  storyText: string
+}
+
+export type GeneratedContent = {
+  days: GeneratedDay[]
+  tone: string
+  offer: string
+  targetAudience: string
+  isAiGenerated: boolean
+}
+
 export type SavedPost = {
   id: string
   idea: ContentIdea
   captionPackage: CaptionPackage
   createdAt: string
 }
+
+export type Feature = {
+  icon: LucideIcon
+  title: string
+  description: string
+}
+
+// Legacy types kept for old components still in the repo
+export type AuthUser = {
+  name: string
+  email: string
+  password: string
+}
+
+export type PostMateUserData = {
+  businessProfile: BusinessProfile | null
+  businessAssets: BusinessAssets | null
+  savedPosts: SavedPost[]
+}
+
+export type PhotoCategory = 'interior' | 'food' | 'drinks' | 'exterior' | 'ambience' | 'team'
 
 export type MenuItem = {
   id: string
@@ -42,8 +91,6 @@ export type MenuItem = {
   price: string
   isFeatured: boolean
 }
-
-export type PhotoCategory = 'interior' | 'food' | 'drinks' | 'exterior' | 'ambience' | 'team'
 
 export type BusinessPhoto = {
   id: string
@@ -65,26 +112,8 @@ export type BusinessAssets = {
   events: string[]
 }
 
-export type Feature = {
-  icon: LucideIcon
-  title: string
-  description: string
-}
-
 export type Step = {
   label: string
   title: string
   description: string
-}
-
-export type AuthUser = {
-  name: string
-  email: string
-  password: string
-}
-
-export type PostMateUserData = {
-  businessProfile: BusinessProfile | null
-  businessAssets: BusinessAssets | null
-  savedPosts: SavedPost[]
 }
