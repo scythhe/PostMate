@@ -176,7 +176,7 @@ export function BusinessDashboard({
 
         {/* Tab: calendar */}
         {tab === 'calendar' && (
-          <CalendarView posts={approved} onDelete={handleDeletePost} onGetIdeas={onGetIdeas} />
+          <CalendarView posts={approved} onDelete={handleDeletePost} onOpen={onOpenPost} onGetIdeas={onGetIdeas} />
         )}
 
         {/* Tab: drafts */}
@@ -278,7 +278,7 @@ function PipelineStep({ icon, label, color, onClick }: { icon: React.ReactNode; 
 
 // ── Calendar view ──────────────────────────────────────────────
 
-function CalendarView({ posts, onDelete, onGetIdeas }: { posts: Post[]; onDelete: (id: string) => void; onGetIdeas: () => void }) {
+function CalendarView({ posts, onDelete, onOpen, onGetIdeas }: { posts: Post[]; onDelete: (id: string) => void; onOpen: (post: Post) => void; onGetIdeas: () => void }) {
   const [cursor, setCursor] = useState(new Date())
   const year  = cursor.getFullYear()
   const month = cursor.getMonth()
@@ -325,7 +325,7 @@ function CalendarView({ posts, onDelete, onGetIdeas }: { posts: Post[]; onDelete
               <p className={`mb-1 flex size-6 items-center justify-center rounded-full text-xs font-bold ${
                 isToday ? 'bg-emerald-600 text-white' : 'text-zinc-400'
               }`}>{day}</p>
-              {dayPosts.map(p => <CalendarPostChip key={p.id} post={p} onDelete={() => onDelete(p.id)} />)}
+              {dayPosts.map(p => <CalendarPostChip key={p.id} post={p} onDelete={() => onDelete(p.id)} onOpen={() => onOpen(p)} />)}
             </div>
           )
         })}
@@ -335,7 +335,7 @@ function CalendarView({ posts, onDelete, onGetIdeas }: { posts: Post[]; onDelete
         <div className="border-t border-zinc-100 px-5 py-4">
           <p className="mb-3 text-[11px] font-bold uppercase tracking-widest text-zinc-400">Approved · No date set</p>
           <div className="flex flex-wrap gap-2">
-            {unscheduled.map(p => <CalendarPostChip key={p.id} post={p} onDelete={() => onDelete(p.id)} />)}
+            {unscheduled.map(p => <CalendarPostChip key={p.id} post={p} onDelete={() => onDelete(p.id)} onOpen={() => onOpen(p)} />)}
           </div>
         </div>
       )}
@@ -354,7 +354,7 @@ function CalendarView({ posts, onDelete, onGetIdeas }: { posts: Post[]; onDelete
   )
 }
 
-function CalendarPostChip({ post, onDelete }: { post: Post; onDelete: () => void }) {
+function CalendarPostChip({ post, onDelete, onOpen }: { post: Post; onDelete: () => void; onOpen: () => void }) {
   const colors: Record<string, string> = {
     Post:     'bg-zinc-200 text-zinc-700',
     Reel:     'bg-purple-100 text-purple-700',
@@ -362,9 +362,11 @@ function CalendarPostChip({ post, onDelete }: { post: Post; onDelete: () => void
     Carousel: 'bg-blue-100 text-blue-700',
   }
   return (
-    <div className={`group mb-0.5 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${colors[post.postType] ?? 'bg-zinc-100 text-zinc-600'}`}>
-      <span className="truncate max-w-[72px]">{post.emoji} {post.title}</span>
-      <button type="button" onClick={onDelete} className="ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition"><X size={9} /></button>
+    <div className={`group mb-0.5 flex items-center gap-0.5 rounded-md text-[10px] font-semibold ${colors[post.postType] ?? 'bg-zinc-100 text-zinc-600'}`}>
+      <button type="button" onClick={onOpen} className="flex-1 truncate px-1.5 py-0.5 text-left hover:underline">
+        {post.emoji} {post.title}
+      </button>
+      <button type="button" onClick={onDelete} className="shrink-0 pr-1 opacity-0 group-hover:opacity-100 transition"><X size={9} /></button>
     </div>
   )
 }
