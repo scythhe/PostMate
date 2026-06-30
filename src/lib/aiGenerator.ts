@@ -1,8 +1,9 @@
 import type { Business, ContentIdea, Post, ScrapedInfo } from '../types'
 
 const SCRAPE_URL   = import.meta.env.VITE_N8N_SCRAPE_URL   as string | undefined
-const IDEAS_URL    = import.meta.env.VITE_N8N_IDEAS_URL     as string | undefined
 const GENERATE_URL = import.meta.env.VITE_N8N_GENERATE_URL as string | undefined
+// IDEAS_URL falls back to the same generate endpoint (mode field differentiates)
+const IDEAS_URL    = (import.meta.env.VITE_N8N_IDEAS_URL as string | undefined) ?? GENERATE_URL
 
 // ── Scrape ─────────────────────────────────────────────────────
 
@@ -30,6 +31,7 @@ export async function generateIdeas(business: Business): Promise<ContentIdea[]> 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          mode: 'ideas',
           businessName: business.name,
           industry: business.industry,
           description: business.description,
@@ -72,6 +74,7 @@ export async function generatePost(business: Business, idea: ContentIdea): Promi
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          mode: 'post',
           businessName: business.name,
           industry: business.industry,
           description: business.description,
