@@ -59,9 +59,13 @@ create policy "sessions_self" on generation_sessions
 -- ── Auto-create profile on signup ──────────────────────────────
 
 create or replace function handle_new_user()
-returns trigger language plpgsql security definer as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 begin
-  insert into profiles (id, name)
+  insert into public.profiles (id, name)
   values (
     new.id,
     coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1))
