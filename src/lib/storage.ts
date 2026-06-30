@@ -8,6 +8,7 @@ const LS_USER_ID  = 'postmate_local_current_user'
 const LS_BIZ      = 'postmate_local_businesses'
 const LS_POSTS    = 'postmate_local_posts'
 const LS_SESSIONS = 'postmate_local_sessions'
+const LS_IDEAS    = 'postmate_local_ideas'
 
 function readJson<T>(key: string, fallback: T): T {
   try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback } catch { return fallback }
@@ -207,6 +208,28 @@ function rowToPost(r: Record<string, unknown>): Post {
     hashtags: (r.hashtags as string[]) ?? [], scheduledDate: r.scheduled_date as string | undefined,
     createdAt: (r.created_at as string) ?? new Date().toISOString(),
   }
+}
+
+// ── Ideas ──────────────────────────────────────────────────────
+
+type SavedIdeasEntry = { businessId: string; ideas: import('../types').ContentIdea[]; savedAt: string }
+
+export function getSavedIdeas(businessId: string): { ideas: import('../types').ContentIdea[]; savedAt: string } | null {
+  const all = readJson<SavedIdeasEntry[]>(LS_IDEAS, [])
+  const entry = all.find(e => e.businessId === businessId)
+  return entry ? { ideas: entry.ideas, savedAt: entry.savedAt } : null
+}
+
+export function saveIdeas(businessId: string, ideas: import('../types').ContentIdea[]): void {
+  const all = readJson<SavedIdeasEntry[]>(LS_IDEAS, [])
+  const entry: SavedIdeasEntry = { businessId, ideas, savedAt: new Date().toISOString() }
+  writeJson(LS_IDEAS, all.some(e => e.businessId === businessId)
+    ? all.map(e => e.businessId === businessId ? entry : e)
+    : [...all, entry])
+}
+
+export function clearSavedIdeas(businessId: string): void {
+  writeJson(LS_IDEAS, readJson<SavedIdeasEntry[]>(LS_IDEAS, []).filter(e => e.businessId !== businessId))
 }
 
 // ── Legacy sessions (kept for existing data) ───────────────────

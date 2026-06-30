@@ -28,8 +28,9 @@ export function Onboarding({
   const [step, setStep] = useState<'method' | 'form' | 'brand'>(eb ? 'form' : 'method')
   const [method, setMethod] = useState<'url' | 'manual'>('url')
   const [saving, setSaving] = useState(false)
-  const [scraping, setScraping] = useState(false)
+  const [scraping, setScraping]     = useState(false)
   const [scrapeError, setScrapeError] = useState('')
+  const [aiFilled, setAiFilled]     = useState(false)
 
   // Basic info
   const [websiteUrl,      setWebsiteUrl]      = useState(eb?.websiteUrl ?? '')
@@ -54,11 +55,19 @@ export function Onboarding({
     setWebsiteUrl(url)
     try {
       const info = await scrapeWebsite(url)
-      if (info.businessName) setBusinessName(info.businessName)
-      if (info.description)  setDescription(info.description)
+      if (info.businessName)    setBusinessName(info.businessName)
+      if (info.description)     setDescription(info.description)
       if (info.instagramHandle) setInstagramHandle(info.instagramHandle)
-      if (info.industry)     setIndustry(info.industry)
-      if (info.location)     setLocation(info.location)
+      if (info.industry)        setIndustry(info.industry)
+      if (info.location)        setLocation(info.location)
+      if (info.targetAudience)  setTargetAudience(info.targetAudience)
+      if (info.products)        setProducts(info.products)
+      if (info.brandHashtags)   setBrandHashtags(info.brandHashtags)
+      if (info.tone) {
+        const validTone = TONES.map(t => t.value).find(v => v === info.tone?.toLowerCase())
+        if (validTone) setTone(validTone)
+      }
+      setAiFilled(true)
       setStep('form')
     } catch {
       setScrapeError('Could not read the website. Enter your business info manually.')
@@ -196,6 +205,11 @@ export function Onboarding({
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">Setup · Step 3</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight">Brand profile</h1>
             <p className="mt-1 text-sm text-zinc-400">This tells the AI how to write content that actually sounds like you.</p>
+            {aiFilled && (
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 flex items-center gap-2">
+                <Sparkles size={15} className="shrink-0 text-emerald-600" /> AI pre-filled this from your website — review and edit anything.
+              </div>
+            )}
             <div className="mt-6 grid gap-5">
               <Field label="Target audience *" hint="Who are your ideal customers?">
                 <input className={INPUT} placeholder="e.g. Young professionals, local families, tourists visiting Tbilisi" value={targetAudience} onChange={e => setTargetAudience(e.target.value)} />

@@ -14,11 +14,15 @@ export async function scrapeWebsite(websiteUrl: string): Promise<ScrapedInfo> {
   const raw = await res.json()
   const d = raw?.output ?? raw?.result ?? raw?.data ?? raw
   return {
-    businessName: String(d.businessName ?? d.business_name ?? ''),
-    description: String(d.description ?? ''),
-    instagramHandle: String(d.instagramHandle ?? d.instagram_handle ?? ''),
-    industry: String(d.industry ?? ''),
-    location: String(d.location ?? ''),
+    businessName:   String(d.businessName   ?? d.business_name    ?? ''),
+    description:    String(d.description    ?? ''),
+    instagramHandle:String(d.instagramHandle ?? d.instagram_handle ?? ''),
+    industry:       String(d.industry       ?? ''),
+    location:       String(d.location       ?? ''),
+    targetAudience: String(d.targetAudience ?? d.target_audience  ?? ''),
+    products:       String(d.products       ?? ''),
+    tone:           String(d.tone           ?? ''),
+    brandHashtags:  String(d.brandHashtags  ?? d.brand_hashtags   ?? ''),
   }
 }
 

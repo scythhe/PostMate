@@ -70,6 +70,10 @@ export type ScrapedInfo = {
   instagramHandle: string
   industry?: string
   location?: string
+  targetAudience?: string
+  products?: string
+  tone?: string
+  brandHashtags?: string
 }
 
 // Legacy aliases kept for any remaining references
