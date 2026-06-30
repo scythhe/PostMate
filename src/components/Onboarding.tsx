@@ -2,11 +2,16 @@ import { ArrowLeft, ArrowRight, AtSign, CheckCircle, Globe, Loader2, PenLine, Sp
 import { useState } from 'react'
 import { scrapeWebsite } from '../lib/aiGenerator'
 import { saveBusiness } from '../lib/storage'
-import type { Business } from '../types'
+import type { Business, Tone } from '../types'
 import { BrandLogo } from './Navbar'
 
-type Step = 'method' | 'scraping' | 'manual' | 'review'
-type Method = 'url' | 'manual'
+const TONES: { value: Tone; label: string; desc: string }[] = [
+  { value: 'professional', label: 'Professional', desc: 'Formal, expert, trustworthy' },
+  { value: 'casual',       label: 'Casual',       desc: 'Friendly, approachable, warm' },
+  { value: 'playful',      label: 'Playful',      desc: 'Fun, witty, energetic' },
+  { value: 'inspiring',    label: 'Inspiring',    desc: 'Motivational, uplifting' },
+  { value: 'educational',  label: 'Educational',  desc: 'Informative, helpful, clear' },
+]
 
 export function Onboarding({
   userId,
@@ -19,38 +24,45 @@ export function Onboarding({
   onDone: (biz: Business) => void
   onBack: () => void
 }) {
-  const [step, setStep] = useState<Step>('method')
-  const [method, setMethod] = useState<Method>('url')
+  const eb = existingBusiness
+  const [step, setStep] = useState<'method' | 'form' | 'brand'>(eb ? 'form' : 'method')
+  const [method, setMethod] = useState<'url' | 'manual'>('url')
   const [saving, setSaving] = useState(false)
-
-  // form state
-  const [websiteUrl, setWebsiteUrl] = useState(existingBusiness?.websiteUrl ?? '')
-  const [instagramHandle, setInstagramHandle] = useState(existingBusiness?.instagramHandle ?? '')
-  const [businessName, setBusinessName] = useState(existingBusiness?.name ?? '')
-  const [description, setDescription] = useState(existingBusiness?.description ?? '')
-  const [primaryColor, setPrimaryColor] = useState(existingBusiness?.primaryColor ?? '#1F352D')
-  const [secondaryColor, setSecondaryColor] = useState(existingBusiness?.secondaryColor ?? '#C9A45C')
-
-  // scraping state
   const [scraping, setScraping] = useState(false)
   const [scrapeError, setScrapeError] = useState('')
 
+  // Basic info
+  const [websiteUrl,      setWebsiteUrl]      = useState(eb?.websiteUrl ?? '')
+  const [instagramHandle, setInstagramHandle] = useState(eb?.instagramHandle ?? '')
+  const [businessName,    setBusinessName]    = useState(eb?.name ?? '')
+  const [description,     setDescription]     = useState(eb?.description ?? '')
+  const [industry,        setIndustry]        = useState(eb?.industry ?? '')
+  const [location,        setLocation]        = useState(eb?.location ?? '')
+  const [primaryColor,    setPrimaryColor]    = useState(eb?.primaryColor ?? '#1F352D')
+  const [secondaryColor,  setSecondaryColor]  = useState(eb?.secondaryColor ?? '#C9A45C')
+
+  // Brand profile
+  const [targetAudience, setTargetAudience] = useState(eb?.targetAudience ?? '')
+  const [tone,           setTone]           = useState<Tone>(eb?.tone ?? 'casual')
+  const [products,       setProducts]       = useState(eb?.products ?? '')
+  const [brandHashtags,  setBrandHashtags]  = useState(eb?.brandHashtags ?? '')
+
   async function handleScrape() {
     if (!websiteUrl.trim()) return
-    setScraping(true)
-    setScrapeError('')
+    setScraping(true); setScrapeError('')
     const url = websiteUrl.startsWith('http') ? websiteUrl : `https://${websiteUrl}`
     setWebsiteUrl(url)
     try {
       const info = await scrapeWebsite(url)
       if (info.businessName) setBusinessName(info.businessName)
-      if (info.description) setDescription(info.description)
+      if (info.description)  setDescription(info.description)
       if (info.instagramHandle) setInstagramHandle(info.instagramHandle)
-      setStep('review')
+      if (info.industry)     setIndustry(info.industry)
+      if (info.location)     setLocation(info.location)
+      setStep('form')
     } catch {
-      setScrapeError('Could not load website. Enter your business description manually below.')
-      setMethod('manual')
-      setStep('manual')
+      setScrapeError('Could not read the website. Enter your business info manually.')
+      setMethod('manual'); setStep('form')
     } finally {
       setScraping(false)
     }
@@ -59,285 +71,174 @@ export function Onboarding({
   async function handleSave() {
     setSaving(true)
     const biz: Business = {
-      id: existingBusiness?.id ?? crypto.randomUUID(),
-      userId,
-      name: businessName.trim(),
-      description: description.trim(),
-      instagramHandle: instagramHandle.trim(),
-      websiteUrl: websiteUrl.trim(),
-      primaryColor,
-      secondaryColor,
-      deals: existingBusiness?.deals ?? [],
-      events: existingBusiness?.events ?? [],
+      id: eb?.id ?? crypto.randomUUID(), userId,
+      name: businessName.trim(), description: description.trim(),
+      instagramHandle: instagramHandle.trim(), websiteUrl: websiteUrl.trim(),
+      primaryColor, secondaryColor,
+      industry: industry.trim(), targetAudience: targetAudience.trim(),
+      tone, products: products.trim(), location: location.trim(),
+      brandHashtags: brandHashtags.trim(),
+      deals: eb?.deals ?? [], events: eb?.events ?? [],
     }
-    try {
-      await saveBusiness(biz)
-      onDone(biz)
-    } catch (err) {
-      console.error('Save failed', err)
-    } finally {
-      setSaving(false)
-    }
+    try { await saveBusiness(biz); onDone(biz) }
+    catch (e) { console.error('Save failed', e) }
+    finally { setSaving(false) }
   }
 
-  const canSave = businessName.trim().length > 1 && description.trim().length > 10
+  const canGoNext = businessName.trim().length > 1 && description.trim().length > 10
+  const canSave   = canGoNext && targetAudience.trim().length > 3
 
   return (
     <div className="min-h-screen bg-[#f7f4ee]">
       <nav className="border-b border-zinc-950/10 bg-[#f7f4ee]/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
           <button onClick={onBack} type="button"><BrandLogo /></button>
-          <button
-            className="flex items-center gap-2 text-sm font-semibold text-zinc-500 transition hover:text-zinc-950"
-            onClick={onBack}
-            type="button"
-          >
+          <button className="flex items-center gap-2 text-sm font-semibold text-zinc-500 hover:text-zinc-950 transition" onClick={onBack} type="button">
             <ArrowLeft size={16} /> Back
           </button>
         </div>
       </nav>
 
       <div className="mx-auto max-w-lg px-4 py-12 sm:px-6">
-        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Setup</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          {existingBusiness ? 'Update your business' : 'Tell us about your business'}
-        </h1>
+        {/* Progress dots */}
+        <div className="mb-8 flex items-center gap-2">
+          {(['method', 'form', 'brand'] as const).map((s, i) => (
+            <div key={s} className={`h-1.5 flex-1 rounded-full transition-colors ${
+              s === step ? 'bg-zinc-950' : i < (['method','form','brand'] as const).indexOf(step) ? 'bg-emerald-500' : 'bg-zinc-200'
+            }`} />
+          ))}
+        </div>
 
         {/* ── Step: method ── */}
         {step === 'method' && (
-          <div className="mt-8 grid gap-4">
-            <MethodCard
-              active={method === 'url'}
-              icon={<Globe size={20} />}
-              title="Import from website"
-              description="Paste your website URL — we'll read it and extract your business info automatically."
-              onClick={() => setMethod('url')}
-            />
-            <MethodCard
-              active={method === 'manual'}
-              icon={<PenLine size={20} />}
-              title="Enter manually"
-              description="Type your business name and description yourself. Takes 2 minutes."
-              onClick={() => setMethod('manual')}
-            />
+          <>
+            <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">Setup · Step 1</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight">How do you want to start?</h1>
+            <div className="mt-8 grid gap-4">
+              <MethodCard active={method === 'url'} icon={<Globe size={20} />} title="Import from website"
+                description="Paste your URL and we'll extract your business info automatically." onClick={() => setMethod('url')} />
+              <MethodCard active={method === 'manual'} icon={<PenLine size={20} />} title="Enter manually"
+                description="Type your business name and description yourself. Takes 2 minutes." onClick={() => setMethod('manual')} />
 
-            {method === 'url' && (
-              <div className="mt-2 grid gap-3">
-                <label className="grid gap-1.5 text-sm font-medium text-zinc-700">
-                  Website URL
-                  <span className="relative">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">
-                      <Globe size={15} />
-                    </span>
-                    <input
-                      className="h-11 w-full rounded-md border border-zinc-200 bg-white pl-9 pr-3 text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10"
-                      placeholder="https://yourbusiness.com"
-                      type="url"
-                      value={websiteUrl}
-                      onChange={(e) => setWebsiteUrl(e.target.value)}
-                    />
-                  </span>
-                </label>
-                <button
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-zinc-950 text-sm font-semibold text-white transition hover:bg-emerald-950 disabled:opacity-50"
-                  disabled={websiteUrl.trim().length < 5 || scraping}
-                  onClick={handleScrape}
-                  type="button"
-                >
-                  {scraping ? <><Loader2 size={16} className="animate-spin" /> Reading website…</> : <>Import info <ArrowRight size={16} /></>}
+              {method === 'url' && (
+                <div className="grid gap-3 mt-2">
+                  <Field label="Website URL">
+                    <div className="relative">
+                      <Globe size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                      <input className={INPUT + ' pl-9'} placeholder="https://yourbusiness.com" type="url" value={websiteUrl} onChange={e => setWebsiteUrl(e.target.value)} />
+                    </div>
+                  </Field>
+                  <button className={BTN_PRIMARY + ' w-full'} disabled={websiteUrl.trim().length < 5 || scraping} onClick={handleScrape} type="button">
+                    {scraping ? <><Loader2 size={16} className="animate-spin" /> Reading website…</> : <>Import info <ArrowRight size={16} /></>}
+                  </button>
+                  <button className="text-center text-sm text-zinc-500 underline-offset-2 hover:underline" onClick={() => { setMethod('manual'); setStep('form') }} type="button">
+                    No website — enter manually
+                  </button>
+                </div>
+              )}
+
+              {method === 'manual' && (
+                <button className={BTN_PRIMARY + ' mt-2 w-full'} onClick={() => setStep('form')} type="button">
+                  Continue <ArrowRight size={16} />
                 </button>
-                <button
-                  className="text-center text-sm text-zinc-500 underline-offset-2 hover:underline"
-                  onClick={() => { setMethod('manual'); setStep('manual') }}
-                  type="button"
-                >
-                  I don't have a website — enter manually
-                </button>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Step: form (basic info) ── */}
+        {step === 'form' && (
+          <>
+            <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">Setup · Step 2</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight">Basic info</h1>
+            {scrapeError && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">{scrapeError}</div>}
+            {method === 'url' && !scrapeError && (
+              <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 flex items-center gap-2">
+                <CheckCircle size={15} className="shrink-0" /> Website imported — review and edit below.
               </div>
             )}
-
-            {method === 'manual' && (
-              <button
-                className="mt-2 inline-flex h-11 items-center justify-center gap-2 rounded-md bg-zinc-950 text-sm font-semibold text-white transition hover:bg-emerald-950"
-                onClick={() => setStep('manual')}
-                type="button"
-              >
-                Continue <ArrowRight size={16} />
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* ── Step: scraping ── */}
-        {step === 'scraping' && (
-          <div className="mt-12 flex flex-col items-center gap-4 text-center">
-            <Loader2 size={40} className="animate-spin text-emerald-700" />
-            <p className="text-lg font-medium text-zinc-950">Reading your website…</p>
-            <p className="text-sm text-zinc-500">This takes a few seconds.</p>
-          </div>
-        )}
-
-        {/* ── Step: manual ── */}
-        {step === 'manual' && (
-          <div className="mt-8 grid gap-5">
-            {scrapeError && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                {scrapeError}
+            <div className="mt-6 grid gap-5">
+              <Field label="Business name *">
+                <input className={INPUT} placeholder="e.g. Café Tbilisi" value={businessName} onChange={e => setBusinessName(e.target.value)} />
+              </Field>
+              <Field label="Industry" hint="e.g. Restaurant, Boutique, Gym, Salon…">
+                <input className={INPUT} placeholder="e.g. Restaurant" value={industry} onChange={e => setIndustry(e.target.value)} />
+              </Field>
+              <Field label="Location" hint="City or neighbourhood">
+                <input className={INPUT} placeholder="e.g. Tbilisi, Georgia" value={location} onChange={e => setLocation(e.target.value)} />
+              </Field>
+              <Field label="Description *" hint="What you do and what makes you different. 2–4 sentences.">
+                <textarea className={TEXTAREA} rows={4} placeholder="We're a cozy Georgian café known for traditional recipes and specialty coffee…" value={description} onChange={e => setDescription(e.target.value)} />
+              </Field>
+              <Field label="Instagram handle">
+                <div className="relative">
+                  <AtSign size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+                  <input className={INPUT + ' pl-9'} placeholder="@yourbusiness" value={instagramHandle} onChange={e => setInstagramHandle(e.target.value)} />
+                </div>
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <ColorField label="Primary color"  value={primaryColor}   onChange={setPrimaryColor} />
+                <ColorField label="Accent color"   value={secondaryColor} onChange={setSecondaryColor} />
               </div>
-            )}
-            <FormField label="Business name *">
-              <input
-                className="h-11 w-full rounded-md border border-zinc-200 bg-white px-3 text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10"
-                placeholder="e.g. Café Tbilisi"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-              />
-            </FormField>
-            <FormField label="Business description *" hint="What you do, who you serve, what makes you different. 2–5 sentences.">
-              <textarea
-                className="min-h-[120px] w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10"
-                placeholder="We're a cozy Georgian café in the heart of Tbilisi, known for our traditional recipes and specialty coffee. Our regulars come for the khachapuri and stay for the atmosphere…"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </FormField>
-            <FormField label="Instagram handle" hint="Optional — helps generate on-brand content">
-              <span className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"><AtSign size={15} /></span>
-                <input
-                  className="h-11 w-full rounded-md border border-zinc-200 bg-white pl-9 pr-3 text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10"
-                  placeholder="@yourbusiness"
-                  value={instagramHandle}
-                  onChange={(e) => setInstagramHandle(e.target.value)}
-                />
-              </span>
-            </FormField>
-            <div className="grid grid-cols-2 gap-4">
-              <ColorField label="Primary color" value={primaryColor} onChange={setPrimaryColor} />
-              <ColorField label="Accent color" value={secondaryColor} onChange={setSecondaryColor} />
             </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md border border-zinc-200 text-sm font-semibold text-zinc-700 transition hover:bg-stone-50"
-                onClick={() => setStep('method')}
-                type="button"
-              >
-                <ArrowLeft size={16} /> Back
-              </button>
-              <button
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-zinc-950 text-sm font-semibold text-white transition hover:bg-emerald-950 disabled:opacity-50"
-                disabled={!canSave}
-                onClick={() => setStep('review')}
-                type="button"
-              >
-                Review <ArrowRight size={16} />
+            <div className="mt-6 flex gap-3">
+              {!eb && <button className={BTN_GHOST + ' flex-1'} onClick={() => setStep('method')} type="button"><ArrowLeft size={16} /> Back</button>}
+              <button className={BTN_PRIMARY + ' flex-1'} disabled={!canGoNext} onClick={() => setStep('brand')} type="button">
+                Next — Brand profile <ArrowRight size={16} />
               </button>
             </div>
-          </div>
+          </>
         )}
 
-        {/* ── Step: review ── */}
-        {step === 'review' && (
-          <div className="mt-8 grid gap-5">
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 flex items-center gap-2">
-              <CheckCircle size={16} className="shrink-0" />
-              {method === 'url' ? 'Website imported successfully. Review and edit before saving.' : 'Review your details before saving.'}
+        {/* ── Step: brand profile ── */}
+        {step === 'brand' && (
+          <>
+            <p className="text-xs font-bold uppercase tracking-widest text-emerald-700">Setup · Step 3</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight">Brand profile</h1>
+            <p className="mt-1 text-sm text-zinc-400">This tells the AI how to write content that actually sounds like you.</p>
+            <div className="mt-6 grid gap-5">
+              <Field label="Target audience *" hint="Who are your ideal customers?">
+                <input className={INPUT} placeholder="e.g. Young professionals, local families, tourists visiting Tbilisi" value={targetAudience} onChange={e => setTargetAudience(e.target.value)} />
+              </Field>
+              <Field label="Tone of voice">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {TONES.map(t => (
+                    <button key={t.value} type="button" onClick={() => setTone(t.value)}
+                      className={`rounded-xl border p-3 text-left text-sm transition ${tone === t.value ? 'border-zinc-950 bg-zinc-950 text-white' : 'border-zinc-200 bg-white hover:border-zinc-300'}`}>
+                      <span className="block font-semibold">{t.label}</span>
+                      <span className={`block text-xs mt-0.5 ${tone === t.value ? 'text-zinc-300' : 'text-zinc-400'}`}>{t.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              <Field label="Products & services" hint="What do you sell? List your main offerings.">
+                <textarea className={TEXTAREA} rows={3} placeholder="e.g. Specialty coffee, traditional Georgian food, catering, private events" value={products} onChange={e => setProducts(e.target.value)} />
+              </Field>
+              <Field label="Brand hashtags" hint="Your go-to hashtags, comma-separated. Optional.">
+                <input className={INPUT} placeholder="e.g. #cafetbilisi, #tbilisicoffee, #georgianfood" value={brandHashtags} onChange={e => setBrandHashtags(e.target.value)} />
+              </Field>
             </div>
-
-            <FormField label="Business name *">
-              <input
-                className="h-11 w-full rounded-md border border-zinc-200 bg-white px-3 text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-              />
-            </FormField>
-            <FormField label="Business description *" hint="Edit to make it more accurate or add personality.">
-              <textarea
-                className="min-h-[150px] w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </FormField>
-            <FormField label="Instagram handle" hint="Optional">
-              <span className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"><AtSign size={15} /></span>
-                <input
-                  className="h-11 w-full rounded-md border border-zinc-200 bg-white pl-9 pr-3 text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10"
-                  placeholder="@yourbusiness"
-                  value={instagramHandle}
-                  onChange={(e) => setInstagramHandle(e.target.value)}
-                />
-              </span>
-            </FormField>
-            <div className="grid grid-cols-2 gap-4">
-              <ColorField label="Primary color" value={primaryColor} onChange={setPrimaryColor} />
-              <ColorField label="Accent color" value={secondaryColor} onChange={setSecondaryColor} />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md border border-zinc-200 text-sm font-semibold text-zinc-700 transition hover:bg-stone-50"
-                onClick={() => setStep(method === 'url' ? 'method' : 'manual')}
-                type="button"
-              >
-                <ArrowLeft size={16} /> Edit
-              </button>
-              <button
-                className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-md bg-zinc-950 text-sm font-semibold text-white transition hover:bg-emerald-950 disabled:opacity-50"
-                disabled={!canSave}
-                onClick={handleSave}
-                type="button"
-              >
-                {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <><Sparkles size={16} /> Save &amp; continue</>}
+            <div className="mt-6 flex gap-3">
+              <button className={BTN_GHOST + ' flex-1'} onClick={() => setStep('form')} type="button"><ArrowLeft size={16} /> Back</button>
+              <button className={BTN_PRIMARY + ' flex-1'} disabled={!canSave || saving} onClick={handleSave} type="button">
+                {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <><Sparkles size={16} /> Finish setup</>}
               </button>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>
   )
 }
 
-function MethodCard({
-  active,
-  icon,
-  title,
-  description,
-  onClick,
-}: {
-  active: boolean
-  icon: React.ReactNode
-  title: string
-  description: string
-  onClick: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex items-start gap-4 rounded-xl border p-4 text-left transition ${
-        active
-          ? 'border-emerald-700 bg-emerald-50 ring-2 ring-emerald-700/20'
-          : 'border-zinc-200 bg-white hover:border-zinc-300'
-      }`}
-    >
-      <span className={`mt-0.5 ${active ? 'text-emerald-700' : 'text-zinc-400'}`}>{icon}</span>
-      <span>
-        <span className="block font-semibold text-zinc-950 text-sm">{title}</span>
-        <span className="block text-xs leading-5 text-zinc-500 mt-0.5">{description}</span>
-      </span>
-    </button>
-  )
-}
+// ── Sub-components ─────────────────────────────────────────────
 
-function FormField({
-  label,
-  hint,
-  children,
-}: {
-  label: string
-  hint?: string
-  children: React.ReactNode
-}) {
+const INPUT   = 'h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-zinc-950 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 text-sm'
+const TEXTAREA = 'w-full rounded-xl border border-zinc-200 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 resize-none'
+const BTN_PRIMARY = 'inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-zinc-950 text-sm font-bold text-white transition hover:bg-emerald-950 disabled:opacity-40 disabled:cursor-not-allowed'
+const BTN_GHOST   = 'inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-zinc-200 text-sm font-semibold text-zinc-700 transition hover:bg-stone-50'
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="grid gap-1.5 text-sm font-medium text-zinc-700">
       {label}
@@ -347,31 +248,26 @@ function FormField({
   )
 }
 
-function ColorField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (v: string) => void
-}) {
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <label className="grid gap-1.5 text-sm font-medium text-zinc-700">
       {label}
-      <span className="flex h-11 overflow-hidden rounded-md border border-zinc-200 bg-white">
-        <input
-          className="h-full w-12 cursor-pointer border-0 bg-transparent p-1.5"
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
-        <input
-          className="min-w-0 flex-1 bg-transparent px-3 text-zinc-950 outline-none text-sm"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-        />
+      <span className="flex h-11 overflow-hidden rounded-xl border border-zinc-200 bg-white">
+        <input className="h-full w-12 cursor-pointer border-0 bg-transparent p-1.5" type="color" value={value} onChange={e => onChange(e.target.value)} />
+        <input className="min-w-0 flex-1 bg-transparent px-3 text-sm text-zinc-950 outline-none" value={value} onChange={e => onChange(e.target.value)} />
       </span>
     </label>
+  )
+}
+
+function MethodCard({ active, icon, title, description, onClick }: { active: boolean; icon: React.ReactNode; title: string; description: string; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className={`flex items-start gap-4 rounded-2xl border p-4 text-left transition ${active ? 'border-emerald-700 bg-emerald-50 ring-2 ring-emerald-700/20' : 'border-zinc-200 bg-white hover:border-zinc-300'}`}>
+      <span className={`mt-0.5 ${active ? 'text-emerald-700' : 'text-zinc-400'}`}>{icon}</span>
+      <span>
+        <span className="block font-semibold text-zinc-950 text-sm">{title}</span>
+        <span className="block text-xs leading-5 text-zinc-500 mt-0.5">{description}</span>
+      </span>
+    </button>
   )
 }
