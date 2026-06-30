@@ -1,498 +1,280 @@
-import {
-  ArrowRight,
-  BadgeCheck,
-  BarChart3,
-  CalendarDays,
-  Camera,
-  Captions,
-  Check,
-  Clock3,
-  Download,
-  Hash,
-  Layers3,
-  MessageSquareText,
-  Palette,
-  Sparkles,
-  Store,
-  WandSparkles,
-} from 'lucide-react'
-import type { ReactNode } from 'react'
-import { Navbar } from './Navbar'
-import type { Feature } from '../types'
-
-const features: Feature[] = [
-  { icon: CalendarDays, title: 'Weekly content plans', description: 'Turn one offer into a balanced calendar of posts, reels, stories, and reminders.' },
-  { icon: Captions, title: 'On-brand captions', description: 'Generate polished captions that match the business tone and audience.' },
-  { icon: Hash, title: 'Local hashtag sets', description: 'Create practical hashtag groups around city, niche, occasion, and offer.' },
-  { icon: Palette, title: 'Branded post previews', description: 'Preview Instagram-ready creative with business colors, offer copy, and visual hierarchy.' },
-  { icon: BarChart3, title: 'Promotion rhythm', description: 'Balance sales posts with trust-building moments so the feed never feels pushy.' },
-  { icon: Layers3, title: 'Reusable examples', description: 'Save proven post ideas and refresh them for new campaigns, seasons, and events.' },
-]
-
-const planItems = ['Monday: behind the counter reel', 'Wednesday: offer teaser post', 'Friday: seasonal latte promo']
-const hashtags = ['#portlandcafe', '#localcoffee', '#brunchspot', '#supportlocal']
+import { ArrowRight, Camera, Check, Eye, Sparkles, Zap } from 'lucide-react'
+import { BrandLogo } from './Navbar'
 
 export function LandingPage({
   onGetStarted,
-  onTryDemo,
+  onSignIn,
+  onTryDemo: _onTryDemo,
 }: {
   onGetStarted: () => void
+  onSignIn?: () => void
   onTryDemo: () => void
 }) {
   return (
-    <div className="min-h-screen bg-[#f7f4ee] text-zinc-950">
-      <Navbar onGetStarted={onGetStarted} onTryDemo={onTryDemo} />
-      <main>
-        <Hero onGetStarted={onGetStarted} onTryDemo={onTryDemo} />
-        <ProblemSection />
-        <HowItWorks />
-        <FeaturesSection />
-        <ExamplePreviewSection />
-        <CtaSection onGetStarted={onGetStarted} />
-      </main>
+    <div className="min-h-screen bg-white text-zinc-950">
+      <LandingNav onGetStarted={onGetStarted} onSignIn={onSignIn ?? onGetStarted} />
+      <Hero onGetStarted={onGetStarted} />
+      <HowItWorks />
+      <Pricing onGetStarted={onGetStarted} />
+      <FinalCTA onGetStarted={onGetStarted} />
     </div>
   )
 }
 
-function Hero({ onGetStarted, onTryDemo }: { onGetStarted: () => void; onTryDemo: () => void }) {
+// ── Nav ────────────────────────────────────────────────────────
+
+function LandingNav({ onGetStarted, onSignIn }: { onGetStarted: () => void; onSignIn: () => void }) {
   return (
-    <header className="relative overflow-hidden border-b border-zinc-950/10 bg-[#ebe6dc]">
-      <div className="absolute inset-0 hero-grid opacity-70" />
-      <div className="relative mx-auto max-w-7xl px-4 pb-14 pt-16 sm:px-6 lg:px-8 lg:pb-20 lg:pt-24">
-        <div className="mx-auto max-w-4xl text-center">
-          <Eyebrow icon={Sparkles}>Built for restaurants, cafes, salons, studios, and shops</Eyebrow>
-          <h1 className="mt-5 text-5xl font-semibold leading-[0.95] tracking-tight text-zinc-950 sm:text-6xl lg:text-7xl">
-            Instagram content without hiring an SMM.
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-700">
-            Describe your business in a few sentences. PostMate generates a full week of Instagram posts, captions, and hashtags — instantly.
-          </p>
-          <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-            <button
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-emerald-950"
-              onClick={onGetStarted}
-              type="button"
-            >
-              Get started free <ArrowRight size={17} />
-            </button>
-            <button
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-zinc-950/10 bg-white px-5 text-sm font-semibold text-zinc-950 transition hover:bg-stone-50"
-              onClick={onTryDemo}
-              type="button"
-            >
-              Try demo in 30 seconds
-            </button>
-          </div>
-        </div>
-        <div className="mx-auto mt-12 max-w-6xl">
-          <ProductShowcase />
-        </div>
-      </div>
-    </header>
-  )
-}
-
-function ProductShowcase() {
-  return (
-    <div className="rounded-lg border border-zinc-950/10 bg-zinc-950 p-3 shadow-2xl shadow-zinc-950/20">
-      <div className="grid gap-3 rounded-md bg-[#f8f6f0] p-3 lg:grid-cols-[1fr_0.9fr_0.8fr]">
-        <DashboardPanel />
-        <CaptionPanel />
-        <PostPreview compact />
-      </div>
-    </div>
-  )
-}
-
-function DashboardPanel() {
-  return (
-    <section className="rounded-md border border-zinc-200 bg-white p-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-zinc-500">Weekly plan</p>
-          <h2 className="mt-1 text-xl font-semibold tracking-tight">Cedar & Steam Cafe</h2>
-        </div>
-        <span className="grid size-10 place-items-center rounded-md bg-emerald-950 text-white">
-          <CalendarDays size={18} />
-        </span>
-      </div>
-      <div className="mt-5 grid gap-3">
-        {planItems.map((item) => (
-          <div className="flex items-center gap-3 rounded-md border border-zinc-100 bg-stone-50 px-3 py-3" key={item}>
-            <Check className="shrink-0 text-emerald-700" size={17} />
-            <span className="text-sm font-medium text-zinc-700">{item}</span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-5 rounded-md bg-emerald-950 p-4 text-white">
-        <p className="text-sm text-white/70">Campaign focus</p>
-        <p className="mt-1 font-semibold">Two-for-one seasonal lattes every Friday morning.</p>
-      </div>
-    </section>
-  )
-}
-
-function CaptionPanel() {
-  return (
-    <section className="rounded-md border border-zinc-200 bg-white p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <MessageSquareText className="text-emerald-700" size={19} />
-        <h2 className="font-semibold">Generated caption</h2>
-      </div>
-      <p className="text-sm leading-6 text-zinc-700">
-        Bring a friend this Friday and make the morning sweeter. Our seasonal maple latte is two-for-one from 8 to 11, served with the warm corner-table energy you know us for.
-      </p>
-      <div className="mt-5 flex flex-wrap gap-2">
-        {hashtags.map((tag) => (
-          <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-zinc-600" key={tag}>
-            {tag}
-          </span>
-        ))}
-      </div>
-      <div className="mt-5 flex items-center justify-between rounded-md border border-zinc-200 px-3 py-2 text-sm text-zinc-600">
-        <span className="flex items-center gap-2">
-          <Clock3 size={15} /> Best time
-        </span>
-        <strong className="text-zinc-950">Friday 8:15 AM</strong>
-      </div>
-    </section>
-  )
-}
-
-function ProblemSection() {
-  const pains = [
-    {
-      icon: Clock3,
-      title: 'No time to post',
-      description: 'Owners are busy with operations, staff, customers, and daily problems.',
-      stat: '3-5 hours/week lost',
-      accent: 'bg-amber-50 text-amber-700',
-    },
-    {
-      icon: CalendarDays,
-      title: 'Random content',
-      description: 'Posts happen only when someone remembers, so the feed feels inconsistent.',
-      stat: 'No weekly plan',
-      accent: 'bg-sky-50 text-sky-700',
-    },
-    {
-      icon: BarChart3,
-      title: 'SMM is expensive',
-      description: 'Many small businesses cannot afford a monthly social media manager.',
-      stat: 'High monthly cost',
-      accent: 'bg-rose-50 text-rose-700',
-    },
-    {
-      icon: Palette,
-      title: 'Good place, weak page',
-      description: 'The real business looks better than its Instagram presence.',
-      stat: 'Missed first impression',
-      accent: 'bg-violet-50 text-violet-700',
-    },
-  ]
-
-  return (
-    <SectionShell id="problem">
-      <div className="grid gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
-        <SectionHeading
-          eyebrow="The problem"
-          title="Local owners need consistent marketing, but social media becomes another job."
-          description="Hiring an SMM can be expensive before the business has proven its content rhythm. PostMate gives owners a practical starting point that still feels polished."
-        />
-        <div className="grid gap-4 sm:grid-cols-2">
-          {pains.map((pain) => (
-            <article className="group relative overflow-hidden rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-zinc-950/5" key={pain.title}>
-              <div className="absolute right-4 top-4 h-16 w-16 rounded-full bg-stone-100 transition group-hover:scale-110" />
-              <div className="relative">
-                <div className="flex items-start justify-between gap-4">
-                  <span className={`grid size-11 place-items-center rounded-md ${pain.accent}`}>
-                    <pain.icon size={20} />
-                  </span>
-                  <span className="rounded-full bg-zinc-950 px-3 py-1 text-xs font-semibold text-white">{pain.stat}</span>
-                </div>
-                <h3 className="mt-5 text-xl font-semibold tracking-tight">{pain.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-600">{pain.description}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
-    </SectionShell>
-  )
-}
-
-function HowItWorks() {
-  const flowSteps = [
-    {
-      icon: Store,
-      label: '01',
-      title: 'Describe your business',
-      details: ['Name', 'What you offer', 'Location', 'Brand colors'],
-    },
-    {
-      icon: WandSparkles,
-      label: '02',
-      title: 'AI generates your plan',
-      details: ['7-day content plan', 'Captions', 'Hashtags', 'Story text'],
-    },
-    {
-      icon: MessageSquareText,
-      label: '03',
-      title: 'Review and copy',
-      details: ['Select any day', 'Copy captions', 'Copy hashtags', 'Save posts'],
-    },
-    {
-      icon: Download,
-      label: '04',
-      title: 'Export your post',
-      details: ['Branded preview', 'PNG download'],
-    },
-  ]
-
-  return (
-    <SectionShell id="how" tone="white">
-      <SectionHeading
-        centered
-        eyebrow="How it works"
-        title="A real product flow from local business assets to export-ready posts."
-        description="PostMate does not start from a blank prompt. It uses the business profile and real assets to shape the plan, copy, and preview."
-      />
-      <div className="mt-10 grid gap-4 lg:grid-cols-4">
-        {flowSteps.map((step, index) => (
-          <article className="relative rounded-lg border border-zinc-200 bg-stone-50 p-5 shadow-sm" key={step.label}>
-            {index < flowSteps.length - 1 ? (
-              <span className="absolute -right-3 top-1/2 z-10 hidden size-6 -translate-y-1/2 place-items-center rounded-full border border-zinc-200 bg-white text-zinc-400 lg:grid">
-                <ArrowRight size={14} />
-              </span>
-            ) : null}
-            <div className="flex items-center justify-between gap-4">
-              <span className="grid size-11 place-items-center rounded-md bg-emerald-950 text-white">
-                <step.icon size={20} />
-              </span>
-              <span className="text-sm font-semibold text-emerald-700">{step.label}</span>
-            </div>
-            <h3 className="mt-5 text-lg font-semibold tracking-tight">{step.title}</h3>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {step.details.map((detail) => (
-                <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-zinc-600 ring-1 ring-zinc-200" key={detail}>
-                  {detail}
-                </span>
-              ))}
-            </div>
-          </article>
-        ))}
-      </div>
-      <WorkflowMockup />
-    </SectionShell>
-  )
-}
-
-function WorkflowMockup() {
-  const mockupSteps = [
-    { title: 'Profile', items: ['Maison Marani', 'Luxury restaurant', 'Emerald + gold'] },
-    { title: 'Assets', items: ['3 menu items', '4 photo categories', '2 reviews'] },
-    { title: 'Plan', items: ['7 post ideas', 'Captions', 'Hashtags'] },
-    { title: 'Post Preview', items: ['Square creative', 'Brand colors', 'PNG export'] },
-  ]
-
-  return (
-    <div className="mt-8 rounded-lg border border-zinc-200 bg-zinc-950 p-3 shadow-xl shadow-zinc-950/10">
-      <div className="grid gap-3 rounded-md bg-[#f8f6f0] p-3 md:grid-cols-4">
-        {mockupSteps.map((step, index) => (
-          <div className="rounded-md border border-zinc-200 bg-white p-4" key={step.title}>
-            <div className="flex items-center justify-between gap-3">
-              <h3 className="font-semibold tracking-tight">{step.title}</h3>
-              {index < mockupSteps.length - 1 ? <ArrowRight className="hidden text-zinc-300 md:block" size={17} /> : null}
-            </div>
-            <div className="mt-4 grid gap-2">
-              {step.items.map((item) => (
-                <div className="rounded-md bg-stone-50 px-3 py-2 text-sm font-medium text-zinc-600" key={item}>
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function FeaturesSection() {
-  return (
-    <SectionShell id="features">
-      <SectionHeading
-        eyebrow="Features"
-        title="Everything a local business needs before it hires a full social team."
-        description="PostMate keeps the creative workflow focused: strategy, captions, hashtags, and a clear preview of the final post."
-      />
-      <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {features.map((feature) => (
-          <FeatureCard feature={feature} key={feature.title} />
-        ))}
-      </div>
-    </SectionShell>
-  )
-}
-
-function ExamplePreviewSection() {
-  return (
-    <SectionShell id="example" tone="dark">
-      <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
-        <div>
-          <Eyebrow icon={WandSparkles}>Example output</Eyebrow>
-          <h2 className="mt-5 text-4xl font-semibold leading-tight tracking-tight text-white sm:text-5xl">
-            A Friday offer becomes a post, caption, hashtag set, and weekly plan.
-          </h2>
-          <p className="mt-5 max-w-xl leading-8 text-zinc-300">
-            This preview uses a restaurant and cafe profile by default, with warm language, a clear local offer, and premium visual direction.
-          </p>
-          <div className="mt-7 grid gap-3 text-sm text-zinc-300 sm:grid-cols-2">
-            <ProofPoint>Caption matched to brand tone</ProofPoint>
-            <ProofPoint>Hashtags grouped for local reach</ProofPoint>
-            <ProofPoint>Offer framed for conversion</ProofPoint>
-            <ProofPoint>Design preview ready to approve</ProofPoint>
-          </div>
-        </div>
-        <div className="grid gap-4 md:grid-cols-[0.9fr_1.1fr]">
-          <div className="grid gap-4">
-            <MiniOutputCard icon={CalendarDays} title="Content plan" text="5 posts covering behind-the-scenes, trust, offer reminders, and a Friday promo." />
-            <MiniOutputCard icon={Hash} title="Hashtags" text="#portlandcafe #latteart #localbrunch #coffeedeal #supportlocal" />
-            <MiniOutputCard icon={BadgeCheck} title="Review status" text="Ready for owner approval with one clear promotional angle." />
-          </div>
-          <PostPreview />
-        </div>
-      </div>
-    </SectionShell>
-  )
-}
-
-function CtaSection({ onGetStarted }: { onGetStarted: () => void }) {
-  return (
-    <section className="bg-[#f7f4ee] px-4 py-16 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-5xl rounded-lg border border-zinc-950/10 bg-white p-8 text-center shadow-xl shadow-zinc-950/5 sm:p-12" id="cta">
-        <Eyebrow icon={Store}>Built for local businesses</Eyebrow>
-        <h2 className="mx-auto mt-5 max-w-3xl text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-          Give every local business a smarter way to show up on Instagram.
-        </h2>
-        <p className="mx-auto mt-5 max-w-2xl leading-8 text-zinc-600">
-          Describe your business in a sentence. PostMate handles the rest — captions, hashtags, weekly plan, and a branded post preview ready to download.
-        </p>
-        <div className="mt-8 flex justify-center">
+    <nav className="sticky top-0 z-50 border-b border-zinc-100 bg-white/95 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <BrandLogo />
+        <div className="flex items-center gap-3">
           <button
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-zinc-950 px-5 text-sm font-semibold text-white transition hover:bg-emerald-950"
-            onClick={onGetStarted}
             type="button"
+            onClick={onSignIn}
+            className="text-sm font-medium text-zinc-500 transition hover:text-zinc-950"
           >
-            Start for free <ArrowRight size={17} />
+            Sign in
+          </button>
+          <button
+            type="button"
+            onClick={onGetStarted}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-emerald-950"
+          >
+            Try free <ArrowRight size={14} />
           </button>
         </div>
       </div>
-    </section>
+    </nav>
   )
 }
 
-function PostPreview({ compact = false }: { compact?: boolean }) {
+// ── Hero ───────────────────────────────────────────────────────
+
+function Hero({ onGetStarted }: { onGetStarted: () => void }) {
   return (
-    <article className="rounded-lg border border-white/15 bg-[#173f37] p-4 shadow-xl shadow-zinc-950/20">
-      <div className="aspect-square rounded-md border border-white/20 bg-[linear-gradient(145deg,#17423a_0%,#173f37_48%,#e9ad55_100%)] p-5 text-white">
-        <div className="flex h-full flex-col justify-between rounded-md border border-white/20 bg-black/15 p-5">
-          <div className="flex items-center justify-between gap-4">
-            <span className="flex items-center gap-2 text-sm font-semibold">
-              <Camera size={18} /> Cedar & Steam
-            </span>
-            <span className="rounded-full bg-white/15 px-3 py-1 text-xs">Portland</span>
+    <section className="bg-zinc-950 px-4 pt-20 pb-0 sm:px-6">
+      <div className="mx-auto max-w-4xl text-center">
+        <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-zinc-400">
+          <Sparkles size={12} className="text-emerald-400" /> AI-powered · built for local businesses
+        </span>
+        <h1 className="mt-6 text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
+          A week of Instagram posts,<br />
+          <span className="text-emerald-400">ready in 30 seconds.</span>
+        </h1>
+        <p className="mx-auto mt-6 max-w-xl text-lg text-zinc-400">
+          PostMate writes 7 days of captions, content ideas, and what to film — tailored to your exact business.
+        </p>
+        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <button
+            type="button"
+            onClick={onGetStarted}
+            className="inline-flex h-12 items-center gap-2 rounded-xl bg-emerald-500 px-6 text-base font-semibold text-white transition hover:bg-emerald-400"
+          >
+            Try free for 1 week <ArrowRight size={18} />
+          </button>
+        </div>
+        <p className="mt-3 text-sm text-zinc-500">No credit card required · then $25/month</p>
+      </div>
+
+      {/* Product mockup */}
+      <div className="mx-auto mt-14 max-w-5xl">
+        <div className="rounded-t-2xl border border-white/10 bg-zinc-900 p-3">
+          <div className="flex gap-1.5 mb-3 px-1">
+            <span className="size-3 rounded-full bg-zinc-700" />
+            <span className="size-3 rounded-full bg-zinc-700" />
+            <span className="size-3 rounded-full bg-zinc-700" />
           </div>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-white/70">Friday morning offer</p>
-            <h3 className={`${compact ? 'mt-3 text-3xl' : 'mt-4 text-4xl'} font-semibold leading-none tracking-tight`}>Two-for-one seasonal lattes</h3>
-          </div>
-          <div className="flex items-end justify-between gap-4">
-            <p className="max-w-[13rem] text-sm leading-6 text-white/75">Bring a friend. Stay for the pastry case.</p>
-            <span className="grid size-11 place-items-center rounded-md bg-white text-zinc-950">
-              <Sparkles size={19} />
-            </span>
-          </div>
+          <MockDashboard />
         </div>
       </div>
-    </article>
-  )
-}
-
-function FeatureCard({ feature }: { feature: Feature }) {
-  return (
-    <article className="rounded-lg border border-zinc-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-zinc-950/5">
-      <span className="grid size-11 place-items-center rounded-md bg-emerald-950 text-white">
-        <feature.icon size={20} />
-      </span>
-      <h3 className="mt-5 text-xl font-semibold tracking-tight">{feature.title}</h3>
-      <p className="mt-3 leading-7 text-zinc-600">{feature.description}</p>
-    </article>
-  )
-}
-
-function MiniOutputCard({ icon: Icon, title, text }: { icon: Feature['icon']; title: string; text: string }) {
-  return (
-    <article className="rounded-lg border border-white/10 bg-white/10 p-5 text-white backdrop-blur">
-      <Icon className="text-amber-300" size={20} />
-      <h3 className="mt-4 font-semibold">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-zinc-300">{text}</p>
-    </article>
-  )
-}
-
-function ProofPoint({ children }: { children: string }) {
-  return (
-    <p className="flex items-center gap-2">
-      <Check className="text-amber-300" size={17} />
-      {children}
-    </p>
-  )
-}
-
-function SectionShell({
-  children,
-  id,
-  tone = 'stone',
-}: {
-  children: ReactNode
-  id: string
-  tone?: 'stone' | 'white' | 'dark'
-}) {
-  const toneClass = tone === 'dark' ? 'bg-zinc-950 text-white' : tone === 'white' ? 'bg-white text-zinc-950' : 'bg-[#f7f4ee] text-zinc-950'
-
-  return (
-    <section className={`${toneClass} px-4 py-16 sm:px-6 lg:px-8 lg:py-24`} id={id}>
-      <div className="mx-auto max-w-7xl">{children}</div>
     </section>
   )
 }
 
-function SectionHeading({
-  eyebrow,
-  title,
-  description,
-  centered = false,
-}: {
-  eyebrow: string
-  title: string
-  description: string
-  centered?: boolean
-}) {
+function MockDashboard() {
+  const posts = [
+    { day: 'Mon', type: 'Post', category: 'design', emoji: '💬', title: 'Ask us anything', caption: 'We want to hear from you. Drop your question in the comments — we\'re answering everything this week.' },
+    { day: 'Wed', type: 'Carousel', category: 'design', emoji: '🎁', title: 'Summer deal', caption: '20% off everything this week. Tag someone who needs this before it\'s gone.' },
+    { day: 'Thu', type: 'Reel', category: 'capture', emoji: '🎬', title: 'Before we open', caption: 'This is what 7am looks like. The work nobody sees — but you get to.' },
+    { day: 'Fri', type: 'Post', category: 'design', emoji: '🌟', title: 'Your weekend sorted', caption: 'Friday. You made it. We\'re here all weekend and the only thing better than Friday is spending it here.' },
+  ]
+
   return (
-    <div className={centered ? 'mx-auto max-w-3xl text-center' : 'max-w-3xl'}>
-      <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">{eyebrow}</p>
-      <h2 className="mt-3 text-3xl font-semibold leading-tight tracking-tight sm:text-5xl">{title}</h2>
-      <p className="mt-5 text-lg leading-8 text-zinc-600">{description}</p>
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      {posts.map((p) => (
+        <div key={p.day} className="rounded-xl bg-zinc-800 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-bold text-zinc-400">{p.day}</span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${p.type === 'Reel' ? 'bg-purple-900/50 text-purple-300' : 'bg-zinc-700 text-zinc-300'}`}>
+              {p.type}
+            </span>
+            <span className={`ml-auto text-xs ${p.category === 'design' ? 'text-emerald-400' : 'text-blue-400'}`}>
+              {p.category === 'design' ? <Eye size={11} /> : <Camera size={11} />}
+            </span>
+          </div>
+          <p className="text-lg">{p.emoji}</p>
+          <p className="mt-1 text-xs font-semibold text-white">{p.title}</p>
+          <p className="mt-1 text-xs text-zinc-500 leading-4 line-clamp-2">{p.caption}</p>
+          <div className="mt-3 flex items-center gap-1">
+            <div className="flex-1 rounded bg-zinc-700 px-2 py-1 text-xs text-zinc-400">Copy caption</div>
+            {p.category === 'design' && (
+              <div className="rounded bg-emerald-900/50 px-2 py-1 text-xs text-emerald-400">Preview</div>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
 
-function Eyebrow({ children, icon: Icon }: { children: string; icon: Feature['icon'] }) {
+// ── How it works ───────────────────────────────────────────────
+
+function HowItWorks() {
+  const steps = [
+    {
+      n: '01',
+      icon: <Zap size={20} className="text-emerald-600" />,
+      title: 'Set up in 2 minutes',
+      desc: 'Paste your website URL or describe your business. PostMate reads it and builds your profile.',
+    },
+    {
+      n: '02',
+      icon: <span className="text-xl">🎁</span>,
+      title: 'Add deals & events',
+      desc: 'Got a promotion running? An event coming up? AI weaves them into the right posts automatically.',
+    },
+    {
+      n: '03',
+      icon: <Sparkles size={20} className="text-emerald-600" />,
+      title: 'Generate → copy → post',
+      desc: '7 posts. Captions you can copy in one click. A visual preview for posts you can design yourself.',
+    },
+  ]
+
   return (
-    <p className="inline-flex items-center gap-2 rounded-full border border-zinc-950/10 bg-white/75 px-3 py-1 text-sm font-medium text-zinc-700 shadow-sm">
-      <Icon size={15} />
-      {children}
-    </p>
+    <section className="bg-[#f7f4ee] px-4 py-20 sm:px-6">
+      <div className="mx-auto max-w-5xl">
+        <p className="text-center text-xs font-bold uppercase tracking-widest text-emerald-700">How it works</p>
+        <h2 className="mt-3 text-center text-3xl font-bold tracking-tight sm:text-4xl">
+          From zero to a week of content in minutes.
+        </h2>
+        <div className="mt-12 grid gap-6 sm:grid-cols-3">
+          {steps.map((s) => (
+            <div key={s.n} className="rounded-2xl border border-zinc-200 bg-white p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <span className="flex size-10 items-center justify-center rounded-xl bg-zinc-100">{s.icon}</span>
+                <span className="text-xs font-bold text-zinc-400">{s.n}</span>
+              </div>
+              <h3 className="font-bold text-zinc-950">{s.title}</h3>
+              <p className="mt-2 text-sm text-zinc-500 leading-6">{s.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* What you get callouts */}
+        <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {[
+            { icon: '✍️', label: 'Ready-to-copy captions' },
+            { icon: '🎨', label: 'Digital post previews' },
+            { icon: '📷', label: 'Footage guides for Reels' },
+            { icon: '🔁', label: 'No repeated posts' },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-2.5 rounded-xl border border-zinc-200 bg-white px-4 py-3">
+              <span className="text-lg">{item.icon}</span>
+              <span className="text-xs font-semibold text-zinc-700">{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ── Pricing ────────────────────────────────────────────────────
+
+function Pricing({ onGetStarted }: { onGetStarted: () => void }) {
+  return (
+    <section className="bg-white px-4 py-20 sm:px-6">
+      <div className="mx-auto max-w-4xl">
+        <p className="text-center text-xs font-bold uppercase tracking-widest text-emerald-700">Pricing</p>
+        <h2 className="mt-3 text-center text-3xl font-bold tracking-tight sm:text-4xl">
+          Start free. Stay if it works.
+        </h2>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          {/* Free trial */}
+          <div className="rounded-2xl border-2 border-emerald-500 bg-emerald-50 p-8">
+            <span className="inline-block rounded-full bg-emerald-500 px-3 py-1 text-xs font-bold text-white">
+              Start here
+            </span>
+            <p className="mt-4 text-3xl font-bold text-zinc-950">Free</p>
+            <p className="text-zinc-500">for 1 week · full access</p>
+            <ul className="mt-6 grid gap-3">
+              {['All 7-day post generations', 'Digital post previews', 'Deals & events AI', 'Copy-ready captions', 'Footage guides for Reels'].map((f) => (
+                <li key={f} className="flex items-center gap-2.5 text-sm text-zinc-700">
+                  <Check size={15} className="shrink-0 text-emerald-600" /> {f}
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={onGetStarted}
+              className="mt-8 inline-flex w-full h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-bold text-white transition hover:bg-emerald-400"
+            >
+              Start free trial <ArrowRight size={16} />
+            </button>
+            <p className="mt-3 text-center text-xs text-zinc-400">No credit card required</p>
+          </div>
+
+          {/* Pro */}
+          <div className="rounded-2xl border border-zinc-200 bg-white p-8">
+            <span className="inline-block rounded-full bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-600">
+              After trial
+            </span>
+            <p className="mt-4 text-3xl font-bold text-zinc-950">$25</p>
+            <p className="text-zinc-500">per month · cancel anytime</p>
+            <ul className="mt-6 grid gap-3">
+              {['4 content plans per month', '28-post anti-repeat memory', 'Business deals & events', 'All post types + previews', 'Priority AI generation'].map((f) => (
+                <li key={f} className="flex items-center gap-2.5 text-sm text-zinc-700">
+                  <Check size={15} className="shrink-0 text-zinc-400" /> {f}
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              onClick={onGetStarted}
+              className="mt-8 inline-flex w-full h-11 items-center justify-center gap-2 rounded-xl border border-zinc-200 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
+            >
+              Start with the free trial first
+            </button>
+            <p className="mt-3 text-center text-xs text-zinc-400">Upgrade inside the app after trial</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ── Final CTA ──────────────────────────────────────────────────
+
+function FinalCTA({ onGetStarted }: { onGetStarted: () => void }) {
+  return (
+    <section className="bg-zinc-950 px-4 py-20 sm:px-6">
+      <div className="mx-auto max-w-2xl text-center">
+        <h2 className="text-3xl font-bold text-white sm:text-4xl">
+          Your next 7 posts are<br />
+          <span className="text-emerald-400">30 seconds away.</span>
+        </h2>
+        <p className="mt-4 text-zinc-400">No agency. No blank page. No excuses.</p>
+        <button
+          type="button"
+          onClick={onGetStarted}
+          className="mt-8 inline-flex h-12 items-center gap-2 rounded-xl bg-emerald-500 px-8 text-base font-bold text-white transition hover:bg-emerald-400"
+        >
+          Try PostMate free <ArrowRight size={18} />
+        </button>
+        <p className="mt-3 text-sm text-zinc-600">1 week free · then $25/month · cancel anytime</p>
+      </div>
+    </section>
   )
 }

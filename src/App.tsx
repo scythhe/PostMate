@@ -1,165 +1,172 @@
+import { LogOut, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Dashboard } from './components/Dashboard'
+import { Auth } from './components/Auth'
+import { BusinessDashboard } from './components/Dashboard'
+import { GenerateWizard } from './components/GenerateWizard'
+import { GenerationResult } from './components/GenerationResult'
 import { LandingPage } from './components/LandingPage'
 import { BrandLogo } from './components/Navbar'
-import { QuickSetup } from './components/QuickSetup'
-import { SavedPosts } from './components/SavedPosts'
-import type { BusinessProfile, InputProfile, SavedPost } from './types'
+import { Onboarding } from './components/Onboarding'
+import { supabase } from './lib/supabase'
+import { getBusiness, getCurrentUser, signOut } from './lib/storage'
+import type { Business, GenerationSession, User } from './types'
 
-type AppView = 'landing' | 'setup' | 'dashboard' | 'saved'
-
-const DEMO_PROFILE: InputProfile = {
-  websiteUrl: 'https://maisonmarani.ge',
-  instagramHandle: '@maisonmarani',
-  recentCaptions:
-    'The truffle khachapuri has arrived for the season. Reserve your table before it sells out.\n\nA supra for two, a wine list built from rare Kakheti amphora wines. This is what Friday evenings are for.\n\nOur chef sources every ingredient locally. The difference is on your plate.',
-  primaryColor: '#1F352D',
-  secondaryColor: '#C9A45C',
-}
-
-function loadSavedPosts(): SavedPost[] {
-  try {
-    return JSON.parse(localStorage.getItem('postmate_saved') ?? '[]')
-  } catch {
-    return []
-  }
-}
+type AppView = 'landing' | 'auth' | 'onboarding' | 'dashboard' | 'wizard' | 'result'
+type AuthMode = 'signin' | 'signup'
 
 function App() {
   const [view, setView] = useState<AppView>('landing')
-  const [profile, setProfile] = useState<InputProfile | null>(null)
-  const [savedPosts, setSavedPosts] = useState<SavedPost[]>(loadSavedPosts)
+  const [authMode, setAuthMode] = useState<AuthMode>('signup')
+  const [user, setUser] = useState<User | null>(null)
+  const [business, setBusiness] = useState<Business | null>(null)
+  const [session, setSession] = useState<GenerationSession | null>(null)
+  const [booting, setBooting] = useState(true)
 
+  // ── Boot: check existing Supabase session ────────────────────
   useEffect(() => {
-    localStorage.setItem('postmate_saved', JSON.stringify(savedPosts))
-  }, [savedPosts])
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (data.session) {
+        try {
+          const u = await getCurrentUser()
+          if (u) {
+            setUser(u)
+            const biz = await getBusiness(u.id)
+            setBusiness(biz)
+            setView(biz ? 'dashboard' : 'onboarding')
+          }
+        } catch { /* session stale, stay on landing */ }
+      }
+      setBooting(false)
+    })
 
-  const handleGenerate = (p: InputProfile) => {
-    setProfile(p)
-    setView('dashboard')
-  }
+    // Handle external sign-outs (e.g., token expiry)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setBusiness(null)
+        setView('landing')
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
-  const handleTryDemo = () => {
-    setProfile(DEMO_PROFILE)
-    setView('dashboard')
-  }
-
-  const handleBack = () => {
-    setView('setup')
-  }
-
-  if (view === 'saved' && profile) {
-    const stubBusiness: BusinessProfile = {
-      businessName: profile.websiteUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0],
-      industry: 'Local business',
-      location: profile.instagramHandle || '',
-      tone: 'Professional',
-      targetAudience: 'Local customers',
-      offer: profile.recentCaptions.slice(0, 80) || profile.websiteUrl,
-      primaryColor: profile.primaryColor,
-      secondaryColor: profile.secondaryColor,
-    }
+  if (booting) {
     return (
-      <AppShell
-        onGoHome={() => setView('landing')}
-        onBack={() => setView('dashboard')}
-        onGoSaved={() => {}}
-        savedPostCount={savedPosts.length}
-        backLabel="Back to generator"
-        activeSaved
-      >
-        <SavedPosts
-          business={stubBusiness}
-          posts={savedPosts}
-          onDelete={(id) => setSavedPosts((current) => current.filter((p) => p.id !== id))}
-          onOpen={() => setView('dashboard')}
-        />
-      </AppShell>
+      <div className="flex min-h-screen items-center justify-center bg-[#f7f4ee]">
+        <Loader2 size={28} className="animate-spin text-emerald-700" />
+      </div>
     )
   }
 
-  if (view === 'dashboard' && profile) {
+  // ── Landing ──────────────────────────────────────────────────
+  if (view === 'landing') {
     return (
-      <AppShell
-        onGoHome={() => setView('landing')}
-        onBack={handleBack}
-        onGoSaved={() => setView('saved')}
-        savedPostCount={savedPosts.length}
-        backLabel="Edit business"
-      >
-        <Dashboard
-          profile={profile}
-          savedPosts={savedPosts}
-          onSavedPostsChange={setSavedPosts}
-          onBack={handleBack}
-        />
-      </AppShell>
-    )
-  }
-
-  if (view === 'setup') {
-    return (
-      <QuickSetup
-        onGenerate={handleGenerate}
-        onBack={() => setView('landing')}
-        onTryDemo={handleTryDemo}
+      <LandingPage
+        onGetStarted={() => { setAuthMode('signup'); setView('auth') }}
+        onSignIn={() => { setAuthMode('signin'); setView('auth') }}
+        onTryDemo={() => { setAuthMode('signup'); setView('auth') }}
       />
     )
   }
 
-  return <LandingPage onGetStarted={() => setView('setup')} onTryDemo={handleTryDemo} />
+  // ── Auth ─────────────────────────────────────────────────────
+  if (view === 'auth') {
+    return (
+      <Auth
+        defaultMode={authMode}
+        onAuth={async (u) => {
+          setUser(u)
+          const biz = await getBusiness(u.id)
+          setBusiness(biz)
+          setView(biz ? 'dashboard' : 'onboarding')
+        }}
+        onBack={() => setView('landing')}
+      />
+    )
+  }
+
+  // ── Onboarding ───────────────────────────────────────────────
+  if (view === 'onboarding' && user) {
+    return (
+      <Onboarding
+        userId={user.id}
+        existingBusiness={business}
+        onDone={(biz) => { setBusiness(biz); setView('dashboard') }}
+        onBack={() => {
+          if (business) setView('dashboard')
+          else { signOut(); setUser(null); setBusiness(null); setView('landing') }
+        }}
+      />
+    )
+  }
+
+  if (!user || !business) {
+    signOut()
+    setView('landing')
+    return null
+  }
+
+  // ── Generate wizard ──────────────────────────────────────────
+  if (view === 'wizard') {
+    return (
+      <Shell userName={user.name} onSignOut={() => { signOut(); setUser(null); setBusiness(null); setView('landing') }}>
+        <GenerateWizard
+          business={business}
+          onDone={(s) => { setSession(s); setView('result') }}
+          onBack={() => setView('dashboard')}
+        />
+      </Shell>
+    )
+  }
+
+  // ── Generation result ────────────────────────────────────────
+  if (view === 'result' && session) {
+    return (
+      <Shell userName={user.name} onSignOut={() => { signOut(); setUser(null); setBusiness(null); setView('landing') }}>
+        <GenerationResult
+          session={session}
+          business={business}
+          onBack={() => setView('dashboard')}
+        />
+      </Shell>
+    )
+  }
+
+  // ── Dashboard ────────────────────────────────────────────────
+  return (
+    <Shell userName={user.name} onSignOut={() => { signOut(); setUser(null); setBusiness(null); setView('landing') }}>
+      <BusinessDashboard
+        business={business}
+        user={user}
+        onGenerate={() => setView('wizard')}
+        onViewSession={(s) => { setSession(s); setView('result') }}
+        onEditBusiness={() => setView('onboarding')}
+        onBusinessChange={setBusiness}
+      />
+    </Shell>
+  )
 }
 
-function AppShell({
-  children,
-  onGoHome,
-  onBack,
-  onGoSaved,
-  savedPostCount,
-  backLabel,
-  activeSaved = false,
-}: {
-  children: React.ReactNode
-  onGoHome: () => void
-  onBack: () => void
-  onGoSaved: () => void
-  savedPostCount: number
-  backLabel: string
-  activeSaved?: boolean
-}) {
+function Shell({ children, userName, onSignOut }: { children: React.ReactNode; userName: string; onSignOut: () => void }) {
   return (
-    <>
-      <nav className="sticky top-0 z-50 border-b border-zinc-950/10 bg-white/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <button onClick={onGoHome} type="button">
-            <BrandLogo />
-          </button>
-          <div className="flex items-center gap-2">
-            {savedPostCount > 0 && (
-              <button
-                className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
-                  activeSaved
-                    ? 'bg-stone-100 text-zinc-950'
-                    : 'text-zinc-600 hover:bg-stone-100 hover:text-zinc-950'
-                }`}
-                onClick={onGoSaved}
-                type="button"
-              >
-                Saved ({savedPostCount})
-              </button>
-            )}
+    <div className="min-h-screen bg-zinc-50">
+      <nav className="sticky top-0 z-50 border-b border-zinc-200 bg-white/95 backdrop-blur-xl">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
+          <BrandLogo />
+          <div className="flex items-center gap-3">
+            <span className="hidden text-sm font-medium text-zinc-500 sm:block">{userName}</span>
             <button
-              className="rounded-md bg-zinc-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-950"
-              onClick={onBack}
               type="button"
+              onClick={onSignOut}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-sm font-medium text-zinc-600 transition hover:bg-zinc-50"
             >
-              {backLabel}
+              <LogOut size={13} /> Sign out
             </button>
           </div>
         </div>
       </nav>
       {children}
-    </>
+    </div>
   )
 }
 

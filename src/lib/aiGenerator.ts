@@ -1,140 +1,214 @@
-import type { GeneratedContent, GeneratedDay, InputProfile } from '../types'
+import type { Business, GeneratedPost, ScrapedInfo } from '../types'
 
-const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL as string | undefined
+const GENERATE_URL = import.meta.env.VITE_N8N_GENERATE_URL as string | undefined
+const SCRAPE_URL = import.meta.env.VITE_N8N_SCRAPE_URL as string | undefined
 
-export async function generateContent(profile: InputProfile): Promise<GeneratedContent> {
-  if (N8N_WEBHOOK_URL) {
-    try {
-      return await callN8nWebhook(profile)
-    } catch (error) {
-      console.warn('n8n webhook failed, using local generation:', error)
-    }
-  }
-  return generateLocalContent(profile)
-}
+// ── Website scraping ───────────────────────────────────────────
 
-async function callN8nWebhook(profile: InputProfile): Promise<GeneratedContent> {
-  const response = await fetch(N8N_WEBHOOK_URL!, {
+export async function scrapeWebsite(websiteUrl: string): Promise<ScrapedInfo> {
+  if (!SCRAPE_URL) throw new Error('No scraping service configured')
+  const response = await fetch(SCRAPE_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(profile),
+    body: JSON.stringify({ websiteUrl }),
   })
-
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
-
   const raw = await response.json()
-  // Handle different n8n response shapes
-  const data = raw?.output ?? raw?.result ?? raw?.data ?? raw
-
+  const d = raw?.output ?? raw?.result ?? raw?.data ?? raw
   return {
-    businessName: data.businessName ?? domainFromUrl(profile.websiteUrl),
-    days: Array.isArray(data.days) ? data.days : [],
-    tone: data.tone ?? 'Professional',
-    offer: data.offer ?? '',
-    targetAudience: data.targetAudience ?? 'Local customers',
-    isAiGenerated: true,
+    businessName: String(d.businessName ?? ''),
+    description: String(d.description ?? ''),
+    instagramHandle: String(d.instagramHandle ?? ''),
   }
 }
 
-export function generateLocalContent(profile: InputProfile): GeneratedContent {
-  const name = domainFromUrl(profile.websiteUrl)
-  const handle = profile.instagramHandle.replace('@', '')
-  const locTag = handle || name.replace(/[^a-z0-9]/g, '')
+// ── Content generation ─────────────────────────────────────────
 
-  const days: GeneratedDay[] = [
+export async function generatePosts(
+  business: Business,
+  preferences: string,
+  previousTitles: string[],
+): Promise<GeneratedPost[]> {
+  if (GENERATE_URL) {
+    try {
+      return await callN8n(business, preferences, previousTitles)
+    } catch (err) {
+      console.warn('n8n generation failed, using local fallback:', err)
+    }
+  }
+  return localGenerate(business)
+}
+
+async function callN8n(
+  business: Business,
+  preferences: string,
+  previousTitles: string[],
+): Promise<GeneratedPost[]> {
+  const res = await fetch(GENERATE_URL!, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      businessName: business.name,
+      description: business.description,
+      instagramHandle: business.instagramHandle,
+      deals: business.deals,
+      events: business.events,
+      preferences,
+      previousTitles,
+    }),
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const raw = await res.json()
+  const d = raw?.output ?? raw?.result ?? raw?.data ?? raw
+  const posts: Record<string, unknown>[] = Array.isArray(d.posts) ? d.posts : Array.isArray(d) ? d : []
+  return posts.map((p, i) => ({
+    id: crypto.randomUUID(),
+    day: String(p.day ?? DAYS[i % 7]),
+    postType: (VALID_TYPES.includes(String(p.postType)) ? p.postType : 'Post') as GeneratedPost['postType'],
+    contentCategory: (String(p.contentCategory) === 'capture' ? 'capture' : 'design') as GeneratedPost['contentCategory'],
+    designTemplate: (['bold', 'light', 'vivid'].includes(String(p.designTemplate)) ? p.designTemplate : 'bold') as GeneratedPost['designTemplate'],
+    emoji: String(p.emoji ?? '✨'),
+    title: String(p.title ?? ''),
+    caption: String(p.caption ?? ''),
+    shortCaption: String(p.shortCaption ?? ''),
+    captureNote: p.captureNote ? String(p.captureNote) : undefined,
+    hashtags: Array.isArray(p.hashtags) ? (p.hashtags as string[]) : [],
+  }))
+}
+
+// ── Local generator ────────────────────────────────────────────
+
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const
+const VALID_TYPES = ['Post', 'Reel', 'Story', 'Carousel']
+
+function localGenerate(business: Business): GeneratedPost[] {
+  const n = business.name
+  const tag = n.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9]/g, '')
+  const handle = business.instagramHandle || `@${tag}`
+  const deal = business.deals[0]
+  const event = business.events[0]
+
+  const posts: GeneratedPost[] = [
+    // ── Monday: Community Q&A (design — bold) ──────────────────
     {
+      id: crypto.randomUUID(),
       day: 'Monday',
       postType: 'Post',
-      title: 'Why locals choose us',
-      description: `Open the week by highlighting what makes this business stand out. Lead with the most compelling aspect from the website.`,
-      cta: 'Visit us this week',
-      caption: `Starting the week strong. 🌿 If you've been meaning to check us out, this is your sign. Come experience what we're all about.`,
-      shortCaption: `${name} — your week starts here.`,
-      hashtags: [`#${locTag}`, '#localbusiness', '#supportlocal', '#community', '#smallbusiness', '#shoplocal'],
-      storyText: `New week, fresh energy. Come visit us today 👋`,
+      contentCategory: 'design',
+      designTemplate: 'bold',
+      emoji: '💬',
+      title: 'Ask us anything',
+      caption: `We want to hear from you. 💬\n\nWhat's something you've always wanted to know about ${n}? Drop your question in the comments — we're answering everything this week.\n\n${handle}`,
+      shortCaption: `Questions welcome. Ask us anything about ${n} this week.`,
+      hashtags: [`#${tag}`, '#community', '#qa', '#localbusiness', '#askus', '#smallbiz'],
     },
+
+    // ── Tuesday: Signature product (capture — photo) ───────────
     {
+      id: crypto.randomUUID(),
       day: 'Tuesday',
-      postType: 'Carousel',
-      title: 'Behind the scenes',
-      description: `Show the craft and care that goes into what this business delivers every day.`,
-      cta: 'Swipe to see how we do it',
-      caption: `Behind the scenes 👀 We believe the process is just as beautiful as the result. Swipe through to see the details that make us different.`,
-      shortCaption: `The making of ${name} — behind the scenes.`,
-      hashtags: [`#${locTag}`, '#behindthescenes', '#process', '#craftsmanship', '#local', '#authentic'],
-      storyText: `See how we do it — tap through 👀`,
-    },
-    {
-      day: 'Wednesday',
       postType: 'Post',
-      title: 'A word from our guests',
-      description: `Turn a real customer experience into a trust post. Highlight what guests consistently appreciate.`,
-      cta: 'Share your experience',
-      caption: `The best thing about what we do? You. 💚 Hearing from our community is what keeps us going. Drop a comment and tell us your experience — we read every one.`,
-      shortCaption: `You're the reason we do this. Thank you. — ${name}`,
-      hashtags: [`#${locTag}community`, '#customerreview', '#grateful', '#localbusiness', '#realpeople', '#supportlocal'],
-      storyText: `Your feedback means everything 💚`,
+      contentCategory: 'capture',
+      emoji: '📸',
+      title: 'The one people keep coming back for',
+      caption: `Some things just speak for themselves. 📸\n\nIf you've been here before, you already know. If you haven't — what are you waiting for?\n\n${handle}`,
+      shortCaption: `The reason people keep coming back to ${n}.`,
+      captureNote: 'Hero product · close-up · natural light · portrait or square format',
+      hashtags: [`#${tag}`, '#localbusiness', '#shoplocal', '#quality', '#musttry', '#local'],
     },
+
+    // ── Wednesday: Deal or value tip (design — vivid or light) ─
+    ...(deal ? [{
+      id: crypto.randomUUID(),
+      day: 'Wednesday',
+      postType: 'Post' as const,
+      contentCategory: 'design' as const,
+      designTemplate: 'vivid' as const,
+      emoji: '🎁',
+      title: deal.title,
+      caption: `🎁 ${deal.title}\n\n${deal.description}${deal.validUntil ? `\n\nAvailable until ${deal.validUntil}.` : ''} Don't sleep on this one — tag someone who needs to see it.\n\n${handle}`,
+      shortCaption: `${deal.title} — available now at ${n}.`,
+      hashtags: [`#${tag}`, '#deal', '#offer', '#localbusiness', '#shoplocal', '#savemoney'],
+    }] : [{
+      id: crypto.randomUUID(),
+      day: 'Wednesday',
+      postType: 'Post' as const,
+      contentCategory: 'design' as const,
+      designTemplate: 'light' as const,
+      emoji: '💡',
+      title: 'Something most people don\'t know about us',
+      caption: `Not everything makes it to the feed. 💡\n\nHere's something we don't talk about enough: ${n} started because of a simple belief — that [your community] deserves better. That hasn't changed.\n\nEdit this caption to tell your real story. It'll land better than anything we could write.\n\n${handle}`,
+      shortCaption: `The story behind ${n} — and why it still matters.`,
+      hashtags: [`#${tag}`, '#storytime', '#localbusiness', '#smallbiz', '#community', '#behindthescenes'],
+    }]),
+
+    // ── Thursday: Behind the scenes (capture — reel) ───────────
     {
+      id: crypto.randomUUID(),
       day: 'Thursday',
       postType: 'Reel',
-      title: '15-second tour',
-      description: `A quick visual walkthrough that gives potential visitors a feel for the space, the product, and the energy.`,
-      cta: 'Come see it in person',
-      caption: `15 seconds of what we do. 🎥 Everything you see is real and waiting for you. Hit follow so you never miss what we're up to next.`,
-      shortCaption: `A quick look at ${name}.`,
-      hashtags: [`#${locTag}`, '#reel', '#insidelook', '#visit', '#local', '#reelsofinstagram'],
-      storyText: `Watch our latest and come visit 🎥`,
+      contentCategory: 'capture',
+      emoji: '🎬',
+      title: 'Before we open',
+      caption: `This is what it looks like before the doors open. 🎬\n\nThe work nobody sees — but you get to. Follow along for more behind-the-scenes at ${n}.\n\n${handle}`,
+      shortCaption: `Behind the scenes at ${n} — the part nobody usually sees.`,
+      captureNote: '15–30s vertical reel · morning prep sequence · handheld ok · no narration needed',
+      hashtags: [`#${tag}`, '#behindthescenes', '#reel', '#smallbusiness', '#process', '#reelsviral'],
     },
-    {
+
+    // ── Friday: FOMO/Weekend (design — bold or event) ──────────
+    ...(event ? [{
+      id: crypto.randomUUID(),
       day: 'Friday',
-      postType: 'Post',
-      title: 'Friday offer or invite',
-      description: `Welcome the weekend with something worth sharing — a special, an invite, or a reason to visit.`,
-      cta: 'See you this weekend',
-      caption: `Friday is here. 🎉 If you've been waiting for a reason to visit, this is it. We're ready for your weekend. Come say hello.`,
-      shortCaption: `Weekend ready at ${name}. 🎉`,
-      hashtags: [`#${locTag}`, '#fridayfeeling', '#weekend', '#localbusiness', '#treat', '#weekendplans'],
-      storyText: `Happy Friday! See you this weekend 🎉`,
-    },
+      postType: 'Post' as const,
+      contentCategory: 'design' as const,
+      designTemplate: 'bold' as const,
+      emoji: '🗓️',
+      title: event.title,
+      caption: `📅 ${event.title}${event.date ? ` — ${event.date}` : ''}\n\n${event.description}\n\nDrop a 🙋 if you're coming. See you there.\n\n${handle}`,
+      shortCaption: `${event.title} is happening at ${n}. You're invited.`,
+      hashtags: [`#${tag}`, '#event', '#localevent', '#community', '#weekendvibes', '#tbilisi'],
+    }] : [{
+      id: crypto.randomUUID(),
+      day: 'Friday',
+      postType: 'Post' as const,
+      contentCategory: 'design' as const,
+      designTemplate: 'bold' as const,
+      emoji: '🌟',
+      title: 'Your weekend sorted',
+      caption: `Friday. You made it. 🌟\n\nWe're here all weekend and the only thing better than making it to Friday is spending it at ${n}. Who are you bringing?\n\n${handle}`,
+      shortCaption: `Weekend plans? ${n} is the answer.`,
+      hashtags: [`#${tag}`, '#friday', '#weekend', '#weekendvibes', '#localbusiness', '#treatyourself'],
+    }]),
+
+    // ── Saturday: Atmosphere/vibes (capture — photo/carousel) ──
     {
+      id: crypto.randomUUID(),
       day: 'Saturday',
       postType: 'Carousel',
-      title: 'Week in highlights',
-      description: `Round up the best moments and products from the week in a swipeable carousel.`,
-      cta: 'Which was your favorite?',
-      caption: `Our week in pictures. 📸 Another great one — swipe through our top moments and tell us which stood out to you.`,
-      shortCaption: `This week at ${name} — our top moments. 📸`,
-      hashtags: [`#${locTag}`, '#weeklyrecap', '#highlights', '#saturday', '#localbusiness', '#community'],
-      storyText: `Our week in highlights — swipe through 📸`,
+      contentCategory: 'capture',
+      emoji: '📷',
+      title: 'What Saturday looks like here',
+      caption: `This is what Saturdays look like at ${n}. 📸\n\nSwipe through and tag the person you'd bring. We saved you a spot.\n\n${handle}`,
+      shortCaption: `Saturday at ${n}. Come see for yourself.`,
+      captureNote: 'Atmosphere shots · 4–6 images · warm tones · mix of space, product, people',
+      hashtags: [`#${tag}`, '#saturday', '#weekendvibes', '#localbusiness', '#community', '#goodtimes'],
     },
+
+    // ── Sunday: Gratitude + tease (design — vivid) ─────────────
     {
+      id: crypto.randomUUID(),
       day: 'Sunday',
       postType: 'Story',
-      title: 'Community close',
-      description: `End the week with a warm post that thanks the community and teases something for next week.`,
-      cta: 'Follow for next week',
-      caption: `Sunday. 💛 A moment to thank every person who chose us this week. You're the reason we show up. Follow along — next week is going to be good.`,
-      shortCaption: `Thank you. See you next week. — ${name} 💛`,
-      hashtags: [`#${locTag}`, '#sundayvibes', '#community', '#grateful', '#local', '#seeyounextweek'],
-      storyText: `Thank you for an amazing week! 💛 See you Monday.`,
+      contentCategory: 'design',
+      designTemplate: 'vivid',
+      emoji: '💛',
+      title: 'Thank you for this week',
+      caption: `Another week down. 💛\n\nThank you to everyone who came in, ordered, messaged, or just hit follow. You're the reason ${n} exists.\n\nSomething worth waiting for is coming next week. Stay close.\n\n${handle}`,
+      shortCaption: `${n} thanks you for this week. Something new is coming.`,
+      hashtags: [`#${tag}`, '#sunday', '#grateful', '#community', '#thankyou', '#comingsoon'],
     },
   ]
 
-  return {
-    businessName: name,
-    days,
-    tone: 'Warm and professional',
-    offer: `Content generated from ${profile.websiteUrl}`,
-    targetAudience: 'Local customers and followers',
-    isAiGenerated: false,
-  }
-}
-
-function domainFromUrl(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '').split('.')[0]
-  } catch {
-    return url.replace(/https?:\/\/(www\.)?/, '').split('/')[0].split('.')[0] || 'Business'
-  }
+  return posts
 }

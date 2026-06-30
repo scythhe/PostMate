@@ -1,5 +1,87 @@
 import type { LucideIcon } from 'lucide-react'
 
+// === AUTH ===
+export type Plan = 'trial' | 'pro'
+
+export type User = {
+  id: string
+  name: string
+  email: string
+  plan: Plan
+  trialEndsAt: string  // ISO date
+}
+
+// === BUSINESS ===
+export type Deal = {
+  id: string
+  title: string
+  description: string
+  validUntil: string
+}
+
+export type BusinessEvent = {
+  id: string
+  title: string
+  description: string
+  date: string
+}
+
+export type Business = {
+  id: string
+  userId: string
+  name: string
+  description: string
+  instagramHandle: string
+  websiteUrl: string
+  primaryColor: string
+  secondaryColor: string
+  deals: Deal[]
+  events: BusinessEvent[]
+}
+
+// === GENERATION ===
+export type PostType = 'Post' | 'Reel' | 'Story' | 'Carousel'
+
+// 'design' = digital graphic, no camera needed → can show a preview
+// 'capture' = needs real photo/video → shows a 1-line shoot note
+export type ContentCategory = 'design' | 'capture'
+
+export type DesignTemplate = 'bold' | 'light' | 'vivid'
+
+export type GeneratedPost = {
+  id: string
+  day: string
+  postType: PostType
+  contentCategory: ContentCategory
+  designTemplate?: DesignTemplate
+  emoji?: string
+  title: string
+  caption: string
+  shortCaption: string
+  captureNote?: string  // 1-line brief for photo/video posts only
+  hashtags: string[]
+  // legacy fields kept for old sessions in localStorage
+  idea?: string
+  storyIdea?: string
+  footageManual?: string
+}
+
+export type GenerationSession = {
+  id: string
+  businessId: string
+  generatedAt: string
+  monthKey: string
+  preferences: string
+  posts: GeneratedPost[]
+}
+
+export type ScrapedInfo = {
+  businessName: string
+  description: string
+  instagramHandle: string
+}
+
+// === LEGACY (kept for old components still in repo) ===
 export type InputProfile = {
   websiteUrl: string
   instagramHandle: string
@@ -7,6 +89,7 @@ export type InputProfile = {
   primaryColor: string
   secondaryColor: string
 }
+
 
 export type BusinessProfile = {
   businessName: string
@@ -35,27 +118,6 @@ export type CaptionPackage = {
   cta: string
 }
 
-export type GeneratedDay = {
-  day: string
-  postType: string
-  title: string
-  description: string
-  cta: string
-  caption: string
-  shortCaption: string
-  hashtags: string[]
-  storyText: string
-}
-
-export type GeneratedContent = {
-  days: GeneratedDay[]
-  businessName: string
-  tone: string
-  offer: string
-  targetAudience: string
-  isAiGenerated: boolean
-}
-
 export type SavedPost = {
   id: string
   idea: ContentIdea
@@ -69,7 +131,6 @@ export type Feature = {
   description: string
 }
 
-// Legacy types kept for old components still in the repo
 export type AuthUser = {
   name: string
   email: string

@@ -1,402 +1,407 @@
-import { ArrowLeft, Check, Copy, Download, ExternalLink, Loader2, RefreshCw, Sparkles, WandSparkles } from 'lucide-react'
-import { toPng } from 'html-to-image'
-import { useEffect, useRef, useState } from 'react'
-import { InstagramPostPreview } from './InstagramPostPreview'
-import { generateContent } from '../lib/aiGenerator'
-import type { BusinessProfile, ContentIdea, GeneratedContent, GeneratedDay, InputProfile, SavedPost } from '../types'
+import {
+  ArrowRight,
+  Calendar,
+  ChevronRight,
+  Edit2,
+  Plus,
+  Settings,
+  Sparkles,
+  Tag,
+  Trash2,
+  X,
+  Zap,
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { currentMonthKey, countSessionsThisMonth, getSessions, getTrialDaysLeft, saveBusiness } from '../lib/storage'
+import type { Business, BusinessEvent, Deal, GenerationSession, User } from '../types'
 
-export function Dashboard({
-  profile,
-  savedPosts,
-  onSavedPostsChange,
-  onBack,
+const MAX_PER_MONTH = 4
+
+export function BusinessDashboard({
+  business: initialBusiness,
+  user,
+  onGenerate,
+  onViewSession,
+  onEditBusiness,
+  onBusinessChange,
 }: {
-  profile: InputProfile
-  savedPosts: SavedPost[]
-  onSavedPostsChange: (posts: SavedPost[]) => void
-  onBack: () => void
+  business: Business
+  user: User
+  onGenerate: () => void
+  onViewSession: (session: GenerationSession) => void
+  onEditBusiness: () => void
+  onBusinessChange: (biz: Business) => void
 }) {
-  const [content, setContent] = useState<GeneratedContent | null>(null)
-  const [isGenerating, setIsGenerating] = useState(true)
-  const [selectedIndex, setSelectedIndex] = useState(0)
-  const [isExporting, setIsExporting] = useState(false)
-  const previewRef = useRef<HTMLDivElement>(null)
-
-  const runGeneration = () => {
-    setIsGenerating(true)
-    setContent(null)
-    generateContent(profile)
-      .then(setContent)
-      .finally(() => setIsGenerating(false))
-  }
+  const [biz, setBiz] = useState(initialBusiness)
+  const [sessions, setSessions] = useState<GenerationSession[]>([])
+  const [used, setUsed] = useState(0)
+  const monthKey = currentMonthKey()
+  const trialDays = getTrialDaysLeft(user)
 
   useEffect(() => {
-    runGeneration()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    getSessions(biz.id).then(setSessions)
+    countSessionsThisMonth(biz.id, monthKey).then(setUsed)
+  }, [biz.id, monthKey])
 
-  if (isGenerating) return <LoadingState />
-  if (!content || content.days.length === 0) return <ErrorState onBack={onBack} onRetry={runGeneration} />
-
-  const selectedDay = content.days[selectedIndex] ?? content.days[0]
-  const business = profileToBusiness(profile, content)
-
-  const selectedIdea: ContentIdea = {
-    day: selectedDay.day,
-    postType: selectedDay.postType,
-    title: selectedDay.title,
-    description: selectedDay.description,
-    cta: selectedDay.cta,
+  async function persistBiz(updated: Business) {
+    setBiz(updated)
+    onBusinessChange(updated)
+    await saveBusiness(updated)
   }
 
-  const savePost = (day: GeneratedDay) => {
-    const id = `${day.day}-${day.title}`
-    const post: SavedPost = {
-      id,
-      idea: {
-        day: day.day,
-        postType: day.postType,
-        title: day.title,
-        description: day.description,
-        cta: day.cta,
-      },
-      captionPackage: {
-        caption: day.caption,
-        shortCaption: day.shortCaption,
-        hashtags: day.hashtags,
-        storyText: day.storyText,
-        cta: day.cta,
-      },
-      createdAt: savedPosts.find((p) => p.id === id)?.createdAt ?? new Date().toISOString(),
-    }
-    const existingIndex = savedPosts.findIndex((p) => p.id === id)
-    if (existingIndex === -1) {
-      onSavedPostsChange([post, ...savedPosts])
-    } else {
-      onSavedPostsChange(savedPosts.map((p, i) => (i === existingIndex ? post : p)))
-    }
-  }
-
-  const downloadPng = async () => {
-    if (!previewRef.current) return
-    setIsExporting(true)
-    try {
-      const dataUrl = await toPng(previewRef.current, {
-        cacheBust: true,
-        pixelRatio: 3,
-        backgroundColor: profile.primaryColor,
-        canvasWidth: 1800,
-        canvasHeight: 1800,
-      })
-      const a = document.createElement('a')
-      a.download = `postmate-${slugify(content.businessName)}-${slugify(selectedDay.title)}.png`
-      a.href = dataUrl
-      a.click()
-    } finally {
-      setIsExporting(false)
-    }
-  }
-
-  const isSaved = (day: GeneratedDay) =>
-    savedPosts.some((p) => p.id === `${day.day}-${day.title}`)
+  const remaining = MAX_PER_MONTH - used
 
   return (
-    <main className="min-h-screen bg-[#f7f4ee] text-zinc-950">
-      {/* Header */}
-      <section className="border-b border-zinc-950/5 bg-white px-4 py-5 sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Campaign</p>
-              {content.isAiGenerated ? (
-                <span className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
-                  <Sparkles size={11} /> Generated with AI
-                </span>
-              ) : (
-                <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-zinc-500">
-                  Local generation (add n8n webhook for real AI)
-                </span>
-              )}
-            </div>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">{content.businessName}</h1>
-            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-zinc-500">
-              <a
-                className="flex items-center gap-1 transition hover:text-emerald-700"
-                href={profile.websiteUrl}
-                rel="noopener noreferrer"
-                target="_blank"
-              >
-                <ExternalLink size={12} /> {profile.websiteUrl.replace(/^https?:\/\/(www\.)?/, '')}
-              </a>
-              {profile.instagramHandle && (
-                <span className="flex items-center gap-1">
-                  {profile.instagramHandle.startsWith('@') ? profile.instagramHandle : `@${profile.instagramHandle}`}
-                </span>
-              )}
+    <div className="min-h-screen bg-zinc-50">
+      {/* Trial banner */}
+      {user.plan === 'trial' && (
+        <div className={`px-4 py-2.5 text-center text-sm font-medium ${
+          trialDays === 0 ? 'bg-red-600 text-white' :
+          trialDays <= 2 ? 'bg-amber-500 text-white' :
+          'bg-emerald-700 text-white'
+        }`}>
+          {trialDays === 0 ? 'Your free trial has ended.' : `${trialDays} day${trialDays === 1 ? '' : 's'} left in your free trial.`}
+          {' '}<button type="button" className="font-bold underline">Upgrade to Pro — $25/month</button>
+        </div>
+      )}
+
+      {/* Business header */}
+      <div
+        className="px-4 py-8 sm:px-6"
+        style={{ background: `linear-gradient(135deg, ${biz.primaryColor} 0%, ${biz.secondaryColor} 100%)` }}
+      >
+        <div className="mx-auto max-w-5xl flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl font-bold text-white shadow-lg border border-white/20 backdrop-blur-sm">
+              {biz.name[0]?.toUpperCase()}
+            </span>
+            <div>
+              <h1 className="text-xl font-bold text-white">{biz.name}</h1>
+              {biz.instagramHandle && <p className="text-sm text-white/60">{biz.instagramHandle}</p>}
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              className="inline-flex h-10 items-center gap-2 rounded-md border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:bg-stone-50"
-              onClick={onBack}
-              type="button"
-            >
-              <ArrowLeft size={15} /> Edit business
-            </button>
-            <button
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-zinc-950 px-4 text-sm font-semibold text-white transition hover:bg-emerald-950"
-              onClick={runGeneration}
-              type="button"
-            >
-              <RefreshCw size={15} /> Regenerate
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* Main grid */}
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[1fr_0.8fr] lg:px-8">
-        {/* Left: 7-day plan */}
-        <div className="grid gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight">7-day Instagram plan</h2>
-            <span className="text-sm text-zinc-500">{selectedDay.day} selected</span>
-          </div>
-          {content.days.map((day, index) => (
-            <DayCard
-              day={day}
-              isSelected={index === selectedIndex}
-              isSaved={isSaved(day)}
-              key={day.day}
-              onSelect={() => setSelectedIndex(index)}
-              onSave={() => savePost(day)}
-            />
-          ))}
-        </div>
-
-        {/* Right: sticky preview + info */}
-        <aside className="grid gap-4 lg:sticky lg:top-24 lg:self-start">
-          <InstagramPostPreview business={business} exportRef={previewRef} idea={selectedIdea} />
           <button
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-zinc-950 px-5 text-sm font-semibold text-white shadow-lg transition hover:bg-emerald-950 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={isExporting}
-            onClick={downloadPng}
             type="button"
+            onClick={onEditBusiness}
+            className="flex items-center gap-1.5 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-white/20"
           >
-            <Download size={17} /> {isExporting ? 'Exporting...' : 'Download PNG'}
+            <Settings size={14} /> Edit
           </button>
-          <div className="rounded-lg border border-zinc-200 bg-white p-4 text-sm shadow-sm">
-            <p className="font-semibold text-zinc-950">Campaign summary</p>
-            <p className="mt-2 leading-6 text-zinc-600">{content.offer}</p>
-            <div className="mt-3 grid gap-1.5 text-xs text-zinc-500">
-              <span>Tone: {content.tone}</span>
-              <span>Audience: {content.targetAudience}</span>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 space-y-6">
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <p className="text-xs font-medium text-zinc-400">This month</p>
+            <p className="mt-1 text-2xl font-bold text-zinc-950">{used}<span className="text-sm text-zinc-300 font-normal"> / {MAX_PER_MONTH}</span></p>
+            <div className="mt-2 flex gap-1">
+              {Array.from({ length: MAX_PER_MONTH }).map((_, i) => (
+                <span key={i} className={`h-1.5 flex-1 rounded-full ${i < used ? 'bg-emerald-500' : 'bg-zinc-100'}`} />
+              ))}
             </div>
           </div>
-        </aside>
-      </section>
-    </main>
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <p className="text-xs font-medium text-zinc-400">Remaining</p>
+            <p className={`mt-1 text-2xl font-bold ${remaining === 0 ? 'text-red-500' : 'text-zinc-950'}`}>{remaining}</p>
+            <p className="mt-1 text-xs text-zinc-300">resets next month</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <p className="text-xs font-medium text-zinc-400">Promotions</p>
+            <p className="mt-1 text-2xl font-bold text-zinc-950">{biz.deals.length + biz.events.length}</p>
+            <p className="mt-1 text-xs text-zinc-300">deals + events</p>
+          </div>
+        </div>
+
+        {/* Generate CTA */}
+        <div
+          className="relative overflow-hidden rounded-2xl p-6"
+          style={{ background: `linear-gradient(135deg, ${biz.primaryColor}f0, ${biz.secondaryColor}d0)` }}
+        >
+          <div className="absolute -right-8 -top-8 size-40 rounded-full bg-white/5" />
+          <div className="relative flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles size={14} className="text-white/70" />
+                <span className="text-xs font-bold uppercase tracking-wider text-white/60">AI Content</span>
+              </div>
+              <h2 className="text-lg font-bold text-white">Generate this week's content plan</h2>
+              <p className="text-sm text-white/60 mt-0.5">7 posts · captions · previews · footage guides</p>
+            </div>
+            <button
+              type="button"
+              onClick={onGenerate}
+              disabled={remaining === 0}
+              className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold transition hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ color: biz.primaryColor }}
+            >
+              {remaining === 0 ? 'Limit reached' : <>Generate <ArrowRight size={15} /></>}
+            </button>
+          </div>
+          {remaining > 0 && (
+            <p className="relative mt-3 text-xs text-white/40">{remaining} generation{remaining !== 1 ? 's' : ''} remaining this month</p>
+          )}
+        </div>
+
+        {/* Deals + Events */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <PromoSection
+            title="Deals"
+            icon={<Tag size={14} />}
+            color="emerald"
+            emptyText="Deals become your Wednesday content."
+            items={biz.deals.map((d) => ({ id: d.id, title: d.title, sub: d.description, badge: d.validUntil ? `Until ${d.validUntil}` : undefined }))}
+            onAdd={(item) => {
+              const deal: Deal = { id: item.id, title: item.title, description: item.sub ?? '', validUntil: item.badge?.replace('Until ', '') ?? '' }
+              persistBiz({ ...biz, deals: [...biz.deals, deal] })
+            }}
+            onEdit={(item) => {
+              const deal: Deal = { id: item.id, title: item.title, description: item.sub ?? '', validUntil: item.badge?.replace('Until ', '') ?? '' }
+              persistBiz({ ...biz, deals: biz.deals.map((d) => d.id === item.id ? deal : d) })
+            }}
+            onRemove={(id) => persistBiz({ ...biz, deals: biz.deals.filter((d) => d.id !== id) })}
+            fieldLabels={{ sub: 'Description', badge: 'Valid until' }}
+          />
+          <PromoSection
+            title="Events"
+            icon={<Calendar size={14} />}
+            color="blue"
+            emptyText="Events become your Friday post."
+            items={biz.events.map((ev) => ({ id: ev.id, title: ev.title, sub: ev.description, badge: ev.date || undefined }))}
+            onAdd={(item) => {
+              const ev: BusinessEvent = { id: item.id, title: item.title, description: item.sub ?? '', date: item.badge ?? '' }
+              persistBiz({ ...biz, events: [...biz.events, ev] })
+            }}
+            onEdit={(item) => {
+              const ev: BusinessEvent = { id: item.id, title: item.title, description: item.sub ?? '', date: item.badge ?? '' }
+              persistBiz({ ...biz, events: biz.events.map((e) => e.id === item.id ? ev : e) })
+            }}
+            onRemove={(id) => persistBiz({ ...biz, events: biz.events.filter((e) => e.id !== id) })}
+            fieldLabels={{ sub: 'Description', badge: 'Date' }}
+          />
+        </div>
+
+        {/* Past sessions */}
+        {sessions.length > 0 ? (
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">Past plans</p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {sessions.map((s) => <SessionCard key={s.id} session={s} onClick={() => onViewSession(s)} />)}
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border-2 border-dashed border-zinc-200 py-12 text-center">
+            <Zap size={24} className="mx-auto text-zinc-300 mb-2" />
+            <p className="text-sm font-semibold text-zinc-400">No plans yet</p>
+            <p className="text-xs text-zinc-300 mt-1">Hit Generate to create your first week.</p>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
-function DayCard({
-  day,
-  isSelected,
-  isSaved,
-  onSelect,
-  onSave,
-}: {
-  day: GeneratedDay
-  isSelected: boolean
-  isSaved: boolean
-  onSelect: () => void
-  onSave: () => void
-}) {
-  return (
-    <div
-      className={`rounded-xl border transition-all ${
-        isSelected
-          ? 'border-emerald-800 bg-emerald-950 text-white shadow-lg shadow-emerald-950/15'
-          : 'border-zinc-200 bg-white text-zinc-950 hover:border-emerald-800/30 hover:shadow-md'
-      }`}
-    >
-      {/* Header row — always visible, click to select */}
-      <button className="w-full p-5 text-left" onClick={onSelect} type="button">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span
-              className={`text-sm font-semibold ${isSelected ? 'text-amber-200' : 'text-emerald-700'}`}
-            >
-              {day.day}
-            </span>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${
-                isSelected
-                  ? 'bg-white/10 text-white ring-white/20'
-                  : 'bg-stone-100 text-zinc-600 ring-zinc-200'
-              }`}
-            >
-              {day.postType}
-            </span>
-          </div>
-          <span
-            className={`text-xs font-semibold ${isSelected ? 'text-white/60' : 'text-zinc-400'}`}
-          >
-            {isSelected ? '▾ selected' : '▸ select'}
-          </span>
-        </div>
-        <h3 className="mt-2 text-base font-semibold tracking-tight">{day.title}</h3>
-        {!isSelected && (
-          <p className="mt-1 line-clamp-2 text-sm leading-5 text-zinc-500">{day.description}</p>
-        )}
-      </button>
+// ── Session card ───────────────────────────────────────────────
 
-      {/* Expanded caption content */}
-      {isSelected && (
-        <div className="border-t border-white/10 px-5 pb-5 pt-4">
-          <div className="grid gap-4">
-            <CaptionBlock label="Caption" text={day.caption} light />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <CaptionBlock label="Short caption" text={day.shortCaption} light />
-              <CaptionBlock label="Story text" text={day.storyText} light />
-            </div>
-            <div className="rounded-lg bg-white/10 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold">Hashtags</p>
-                <CopyBtn text={day.hashtags.join(' ')} light />
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {day.hashtags.map((tag) => (
-                  <span
-                    className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white ring-1 ring-white/20"
-                    key={tag}
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-amber-500/20 px-4 py-3">
-              <p className="text-sm font-semibold text-amber-200">CTA: {day.cta}</p>
-              <button
-                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-white px-4 text-xs font-semibold text-zinc-950 transition hover:bg-stone-100"
-                onClick={onSave}
-                type="button"
-              >
-                <Check size={13} /> {isSaved ? 'Saved ✓' : 'Save post'}
-              </button>
-            </div>
-          </div>
+function SessionCard({ session, onClick }: { session: GenerationSession; onClick: () => void }) {
+  const TYPE_COLORS: Record<string, string> = {
+    Post: 'bg-zinc-100 text-zinc-600',
+    Reel: 'bg-purple-100 text-purple-700',
+    Story: 'bg-amber-100 text-amber-700',
+    Carousel: 'bg-blue-100 text-blue-700',
+  }
+  const typeCount = session.posts.reduce<Record<string, number>>((acc, p) => {
+    acc[p.postType] = (acc[p.postType] ?? 0) + 1
+    return acc
+  }, {})
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left rounded-2xl border border-zinc-200 bg-white p-5 transition hover:border-zinc-300 hover:shadow-md group"
+    >
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-sm font-bold text-zinc-950">
+            {new Date(session.generatedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+          </p>
+          <p className="text-xs text-zinc-400 mt-0.5">{session.posts.length} posts</p>
         </div>
+        <ChevronRight size={15} className="text-zinc-300 group-hover:text-zinc-500 transition mt-0.5" />
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {Object.entries(typeCount).map(([type, count]) => (
+          <span key={type} className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[type] ?? 'bg-zinc-100 text-zinc-600'}`}>
+            {count}× {type}
+          </span>
+        ))}
+      </div>
+      {session.preferences && (
+        <p className="mt-2 text-xs text-zinc-400 italic truncate">"{session.preferences}"</p>
+      )}
+    </button>
+  )
+}
+
+// ── Generic Promotions section (Deals or Events) ───────────────
+
+type PromoItem = { id: string; title: string; sub?: string; badge?: string }
+
+function PromoSection({
+  title, icon, color, emptyText, items, fieldLabels,
+  onAdd, onEdit, onRemove,
+}: {
+  title: string
+  icon: React.ReactNode
+  color: 'emerald' | 'blue'
+  emptyText: string
+  items: PromoItem[]
+  fieldLabels: { sub: string; badge: string }
+  onAdd: (item: PromoItem) => void
+  onEdit: (item: PromoItem) => void
+  onRemove: (id: string) => void
+}) {
+  const [adding, setAdding] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+
+  const accent = color === 'emerald'
+    ? { dot: 'bg-emerald-500', badge: 'bg-emerald-50 text-emerald-700', add: 'text-emerald-600 hover:text-emerald-800', ring: 'focus:border-emerald-500' }
+    : { dot: 'bg-blue-500', badge: 'bg-blue-50 text-blue-700', add: 'text-blue-600 hover:text-blue-800', ring: 'focus:border-blue-500' }
+
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className={`flex items-center gap-2 text-sm font-bold text-zinc-950`}>
+          <span className={`${color === 'emerald' ? 'text-emerald-600' : 'text-blue-600'}`}>{icon}</span>
+          {title}
+          {items.length > 0 && (
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${accent.badge}`}>{items.length}</span>
+          )}
+        </h2>
+        {!adding && editId === null && (
+          <button type="button" onClick={() => setAdding(true)} className={`flex items-center gap-1 text-xs font-semibold ${accent.add} transition`}>
+            <Plus size={13} /> Add
+          </button>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        {items.map((item) =>
+          editId === item.id ? (
+            <PromoForm
+              key={item.id}
+              initial={item}
+              fieldLabels={fieldLabels}
+              accentRing={accent.ring}
+              onSave={(updated) => { onEdit(updated); setEditId(null) }}
+              onCancel={() => setEditId(null)}
+            />
+          ) : (
+            <PromoCard
+              key={item.id}
+              item={item}
+              dot={accent.dot}
+              badge={accent.badge}
+              onEdit={() => setEditId(item.id)}
+              onRemove={() => onRemove(item.id)}
+            />
+          )
+        )}
+
+        {adding && (
+          <PromoForm
+            fieldLabels={fieldLabels}
+            accentRing={accent.ring}
+            onSave={(item) => { onAdd(item); setAdding(false) }}
+            onCancel={() => setAdding(false)}
+          />
+        )}
+
+        {!adding && editId === null && (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="w-full rounded-xl border border-dashed border-zinc-200 py-2.5 text-xs font-medium text-zinc-400 transition hover:border-zinc-300 hover:text-zinc-600"
+          >
+            + Add {title.toLowerCase().replace(/s$/, '')}
+          </button>
+        )}
+      </div>
+
+      {items.length === 0 && !adding && (
+        <p className="mt-3 text-xs text-zinc-400">{emptyText}</p>
       )}
     </div>
   )
 }
 
-function CaptionBlock({
-  label,
-  text,
-  light = false,
-}: {
-  label: string
-  text: string
-  light?: boolean
+function PromoCard({ item, dot, badge, onEdit, onRemove }: {
+  item: PromoItem; dot: string; badge: string; onEdit: () => void; onRemove: () => void
 }) {
   return (
-    <div className={`rounded-lg p-4 ${light ? 'bg-white/10' : 'border border-zinc-200 bg-[#f7f4ee]'}`}>
-      <div className="flex items-center justify-between gap-3">
-        <p className={`text-sm font-semibold ${light ? 'text-white' : 'text-zinc-950'}`}>{label}</p>
-        <CopyBtn text={text} light={light} />
+    <div className="group flex items-center gap-3 rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3 transition hover:border-zinc-200 hover:bg-white hover:shadow-sm">
+      <span className={`size-2 shrink-0 rounded-full ${dot}`} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-zinc-900 truncate">{item.title}</p>
+        {item.sub && <p className="text-xs text-zinc-400 truncate">{item.sub}</p>}
       </div>
-      <p className={`mt-2 text-sm leading-6 ${light ? 'text-white/75' : 'text-zinc-600'}`}>{text}</p>
+      <div className="flex items-center gap-2 shrink-0">
+        {item.badge && (
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge}`}>{item.badge}</span>
+        )}
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">
+          <button type="button" onClick={onEdit} className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 transition">
+            <Edit2 size={12} />
+          </button>
+          <button type="button" onClick={onRemove} className="rounded-lg p-1 text-zinc-400 hover:bg-red-50 hover:text-red-500 transition">
+            <Trash2 size={12} />
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
 
-function CopyBtn({ text, light }: { text: string; light?: boolean }) {
-  const [copied, setCopied] = useState(false)
+function PromoForm({ initial, fieldLabels, accentRing, onSave, onCancel }: {
+  initial?: PromoItem
+  fieldLabels: { sub: string; badge: string }
+  accentRing: string
+  onSave: (item: PromoItem) => void
+  onCancel: () => void
+}) {
+  const [title, setTitle] = useState(initial?.title ?? '')
+  const [sub, setSub] = useState(initial?.sub ?? '')
+  const [badge, setBadge] = useState(initial?.badge ?? '')
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1400)
-  }
+  const base = `h-9 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs text-zinc-900 outline-none transition ${accentRing} focus:ring-4 focus:ring-current/10`
 
   return (
-    <button
-      className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition ${
-        light
-          ? 'bg-white/15 text-white hover:bg-white/25'
-          : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:text-zinc-950'
-      }`}
-      onClick={handleCopy}
-      type="button"
-    >
-      <Copy size={11} /> {copied ? 'Copied' : 'Copy'}
-    </button>
-  )
-}
-
-function LoadingState() {
-  return (
-    <main className="min-h-screen bg-[#f7f4ee]">
-      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-5 text-center">
-        <div className="grid size-16 place-items-center rounded-2xl bg-emerald-950 text-white shadow-xl shadow-emerald-950/20">
-          <WandSparkles size={28} />
-        </div>
-        <Loader2 className="animate-spin text-emerald-700" size={32} />
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Building your content plan...</h2>
-          <p className="mt-2 text-zinc-500">PostMate is generating 7 days of Instagram content for your business.</p>
-        </div>
-      </div>
-    </main>
-  )
-}
-
-function ErrorState({ onBack, onRetry }: { onBack: () => void; onRetry: () => void }) {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f7f4ee] text-center">
-      <h2 className="text-2xl font-semibold">Generation failed</h2>
-      <p className="max-w-sm text-zinc-500">
-        Something went wrong. Try again or go back and check your details.
-      </p>
-      <div className="flex gap-3">
+    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm space-y-2">
+      <input autoFocus className={base} placeholder="Name *" value={title} onChange={(e) => setTitle(e.target.value)} />
+      <input className={base} placeholder={`${fieldLabels.sub} (optional)`} value={sub} onChange={(e) => setSub(e.target.value)} />
+      <input className={base} placeholder={`${fieldLabels.badge} (optional)`} value={badge} onChange={(e) => setBadge(e.target.value)} />
+      <div className="flex items-center justify-end gap-2 pt-1">
         <button
-          className="rounded-md border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700"
-          onClick={onBack}
           type="button"
+          onClick={onCancel}
+          className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-500 hover:bg-zinc-100 transition"
         >
-          Back
+          <X size={11} /> Cancel
         </button>
         <button
-          className="rounded-md bg-zinc-950 px-4 py-2 text-sm font-semibold text-white"
-          onClick={onRetry}
           type="button"
+          onClick={() => {
+            if (!title.trim()) return
+            onSave({ id: initial?.id ?? crypto.randomUUID(), title: title.trim(), sub: sub.trim() || undefined, badge: badge.trim() || undefined })
+          }}
+          disabled={!title.trim()}
+          className="rounded-lg bg-zinc-950 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-zinc-800 disabled:opacity-40"
         >
-          Retry
+          Save
         </button>
       </div>
-    </main>
+    </div>
   )
-}
-
-function profileToBusiness(profile: InputProfile, content: GeneratedContent): BusinessProfile {
-  return {
-    businessName: content.businessName,
-    industry: 'Local business',
-    location: profile.instagramHandle || profile.websiteUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0],
-    tone: content.tone,
-    targetAudience: content.targetAudience,
-    offer: content.offer,
-    primaryColor: profile.primaryColor,
-    secondaryColor: profile.secondaryColor,
-  }
-}
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
 }

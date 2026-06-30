@@ -1,8 +1,8 @@
 # PostMate
 
-AI-powered Instagram content generator for local businesses.
+AI-powered Instagram content planner for local businesses.
 
-PostMate solves a real problem: local business owners (restaurants, cafés, salons, gyms) know they need to post on Instagram but don't have time, budget, or copywriting skills to do it consistently. PostMate turns a 2-sentence business description into a full 7-day content plan with captions, hashtags, and a branded post preview — in seconds.
+PostMate solves a real problem: local business owners (restaurants, cafés, salons, gyms) know they need to post on Instagram consistently but don't have the time, budget, or copywriting skill to do it. PostMate turns your business info into a complete 7-day content plan — with captions, story ideas, hashtags, and a detailed footage guide — in seconds.
 
 ## Live Demo
 
@@ -12,84 +12,130 @@ PostMate solves a real problem: local business owners (restaurants, cafés, salo
 
 ## AI Agent / Workflow
 
-PostMate uses an **n8n webhook workflow** as its AI backbone. The user only pastes a URL — everything else is automated:
+PostMate uses **two n8n webhook workflows** as its AI backbone:
+
+### Workflow 1 — Website scraper
 
 ```
-User input: website URL + Instagram handle
+User pastes website URL
         ↓
-POST → n8n Webhook
+POST → n8n Webhook (VITE_N8N_SCRAPE_URL)  body: { websiteUrl }
         ↓
-HTTP Request node → scrape business website (GET websiteUrl)
+HTTP Request node → fetch business website (GET websiteUrl)
         ↓
-Code node → extract readable text from HTML
+Code node → strip HTML tags, extract readable text (max 3000 chars)
         ↓
-HTTP Request node → scrape Instagram public profile (GET instagram.com/{handle})
+OpenAI node `gpt-4.1-nano` (system prompt below) → extract structured info
         ↓
-Code node → extract latest post captions
+Respond to Webhook → { businessName, description, instagramHandle }
         ↓
-OpenAI node → analyze website + captions → generate 7-day plan as JSON
-        ↓
-Respond to Webhook
-        ↓
-Website displays generated content
+Website shows extracted info, user reviews and edits before saving
 ```
 
-Set the webhook URL in your `.env` file:
-
+**n8n OpenAI System Prompt (scraper):**
 ```
-VITE_N8N_WEBHOOK_URL=https://your-n8n-instance/webhook/postmate
-```
-
-If no webhook is configured, PostMate falls back to local template-based generation so the app always works during demos.
-
-### n8n OpenAI System Prompt
-
-```
-You are PostMate, an Instagram content expert for local businesses.
-
-You have been given:
-- Website content scraped from the business's homepage
-- Recent Instagram captions from their profile (if available)
-
-Analyze the brand voice, offer, audience, and style. Then generate a 7-day Instagram content plan.
+Extract business info from the following website text.
 
 Return ONLY valid JSON:
 {
-  "businessName": "detected business name",
-  "tone": "brand tone in 3-4 words",
-  "offer": "main product or service",
-  "targetAudience": "who this business serves",
-  "days": [
+  "businessName": "the business name",
+  "description": "2-4 sentence description of what they do, who they serve, and what makes them different",
+  "instagramHandle": "@handle if found, otherwise empty string"
+}
+
+Website text:
+{{$json.websiteText}}
+```
+
+### Workflow 2 — Content generator
+
+```
+User clicks "Generate 7-day plan"
+        ↓
+POST → n8n Webhook (VITE_N8N_GENERATE_URL)
+        ↓
+Payload includes: businessName, description, deals, events,
+                  preferences, previousTitles (last 28 posts for anti-repeat)
+        ↓
+OpenAI node `gpt-4.1-nano` → generate 7-day content plan as JSON
+        ↓
+Respond to Webhook → { posts: [...] }
+        ↓
+Website displays 7 post cards (no image preview)
+```
+
+Configure webhook URLs in your `.env`:
+
+```env
+VITE_N8N_SCRAPE_URL=https://your-n8n.com/webhook/postmate-scrape
+VITE_N8N_GENERATE_URL=https://your-n8n.com/webhook/postmate-generate
+```
+
+If no webhooks are configured, PostMate falls back to high-quality local template generation — the app always works during demos.
+
+### n8n OpenAI System Prompt (content generator)
+
+```
+You are PostMate, an Instagram content strategist for local businesses.
+
+You have been given:
+- businessName and description of the business
+- deals: active promotions/offers
+- events: upcoming events
+- preferences: what the user wants this week (may be empty)
+- previousTitles: last 28 post titles — DO NOT repeat any of these
+
+Generate a 7-day Instagram content plan (Monday–Sunday). Rules:
+- Vary post types: Post, Reel, Story, Carousel
+- For each post decide contentCategory:
+    "design" = can be created as a digital graphic (announcement, quote, deal poster, question, tip) — no camera needed
+    "capture" = needs a real photo or video (product shot, behind the scenes, atmosphere, reel)
+- Mix: aim for 3 design posts and 4 capture posts per week
+- If deals or events exist, dedicate one post to each
+- Never repeat a title from previousTitles
+- Captions must feel human, punchy, brand-aware — NOT generic
+
+Return ONLY valid JSON, no markdown:
+{
+  "posts": [
     {
       "day": "Monday",
       "postType": "Post|Reel|Story|Carousel",
-      "title": "Post title (max 8 words)",
-      "description": "Content direction in 1-2 sentences",
-      "cta": "Action phrase (3-5 words)",
-      "caption": "Instagram caption with 2-3 sentences and 1-2 emojis",
-      "shortCaption": "One sentence version",
-      "hashtags": ["#six", "#relevant", "#hashtags", "#for", "#local", "#reach"],
-      "storyText": "Story text, max 12 words"
+      "contentCategory": "design|capture",
+      "designTemplate": "bold|light|vivid",
+      "emoji": "single emoji that represents this post",
+      "title": "Short hook (max 7 words)",
+      "caption": "Full Instagram caption — 2-4 sentences, 1-2 emojis, ends with handle",
+      "shortCaption": "One punchy sentence",
+      "captureNote": "For capture posts only: one line on what to film/photograph (format, lighting, length)",
+      "hashtags": ["#six", "#relevant", "#hashtags"]
     }
   ]
 }
 
-Generate exactly 7 days: Monday through Sunday.
+designTemplate guide:
+- "bold": dark background (brand primary color), white text — use for announcements, gratitude, strong CTA
+- "light": white background, brand color accents — use for tips, community, storytelling
+- "vivid": gradient (primary→secondary) — use for deals, events, FOMO, excitement
+
+Generate exactly 7 days. Return nothing except the JSON object.
 ```
 
 ---
 
 ## Features
 
-- **One-step setup** — describe your business in a textarea, click generate
-- **7-day Instagram plan** — post type, title, and content direction for each day
-- **Full captions** — main caption, short version, and story text for every day
-- **Hashtag sets** — 6 targeted local hashtags per post
-- **Branded post preview** — Instagram-style square creative using your brand colors
-- **PNG export** — download a print-ready 1800×1800 post
-- **Save posts** — bookmark favorite days to local history
-- **Copy to clipboard** — one-click copy for any caption or hashtag set
-- **AI integration** — n8n → OpenAI; falls back gracefully if unavailable
+- **Optional website import** — paste URL to auto-fill business info, or enter manually
+- **Editable description** — review and refine AI-extracted info before saving
+- **localStorage auth** — sign up / sign in, one account per device
+- **Deals & events** — add ongoing promotions and upcoming events; AI factors them into content
+- **7-day content plan** — idea, caption, short caption, story idea, hashtags, and footage guide per day
+- **Footage manual** — specific, actionable instructions on what to film or photograph for each post
+- **Anti-repeat engine** — tracks the last 28 generated post titles; AI avoids repeating content
+- **4 generations per month** — enforced per business with a visual counter
+- **Copy to clipboard** — one-click copy for captions, short captions, and hashtag sets
+- **Past sessions** — access every previously generated content plan from the dashboard
+- **AI integration** — n8n → OpenAI; falls back gracefully to local templates if unavailable
 
 ---
 
@@ -99,8 +145,8 @@ Generate exactly 7 days: Monday through Sunday.
 |---|---|
 | Frontend | React 19, TypeScript, Vite |
 | Styling | Tailwind CSS v4 |
+| Auth & storage | localStorage (prototype) |
 | AI Workflow | n8n + OpenAI GPT |
-| Image export | html-to-image |
 | Deployment | Vercel |
 
 ---
@@ -111,8 +157,9 @@ Generate exactly 7 days: Monday through Sunday.
 # Install dependencies
 npm install
 
-# (Optional) Add your n8n webhook — app works without it
-echo "VITE_N8N_WEBHOOK_URL=https://your-n8n.com/webhook/postmate" > .env
+# (Optional) Add your n8n webhooks — app works without them
+echo "VITE_N8N_SCRAPE_URL=https://your-n8n.com/webhook/postmate-scrape" >> .env
+echo "VITE_N8N_GENERATE_URL=https://your-n8n.com/webhook/postmate-generate" >> .env
 
 # Start development server
 npm run dev
@@ -128,44 +175,43 @@ npm run build
 ```
 src/
   components/
-    LandingPage.tsx           # Marketing homepage
-    QuickSetup.tsx            # Business description form
-    Dashboard.tsx             # 7-day plan + captions + preview
-    InstagramPostPreview.tsx  # Branded square post visual
-    SavedPosts.tsx            # Post history
-    Navbar.tsx                # Navigation
+    LandingPage.tsx        # Marketing homepage
+    Auth.tsx               # Sign in / sign up (localStorage)
+    Onboarding.tsx         # Business setup: URL import or manual entry
+    Dashboard.tsx          # Main dashboard: business info, deals, events, history
+    GenerateWizard.tsx     # Pre-generation: preferences + usage counter
+    GenerationResult.tsx   # 7 post cards with all content fields
+    Navbar.tsx             # Brand logo component
   lib/
-    aiGenerator.ts            # n8n webhook integration + local fallback
-    mockGenerator.ts          # Template-based fallback generator
+    aiGenerator.ts         # n8n webhook calls + local fallback generator
+    storage.ts             # localStorage CRUD: users, businesses, sessions
   types/
-    index.ts                  # TypeScript type definitions
+    index.ts               # TypeScript type definitions
 ```
 
 ---
 
-## How the AI Agent Works
+## User Flow
 
-**Input** (from website form):
-```json
-{
-  "businessName": "Maison Marani",
-  "description": "A luxury Georgian restaurant offering supra tasting menus...",
-  "location": "Tbilisi, Georgia",
-  "primaryColor": "#1F352D",
-  "secondaryColor": "#C9A45C"
-}
+```
+Landing → Sign up → Business setup (URL import or manual)
+        ↓
+Dashboard (business info, deals, events, generation history)
+        ↓
+Generate wizard (preferences, usage counter showing X/4 remaining)
+        ↓
+7-day content plan (ideas, captions, story ideas, footage guides, hashtags)
+        ↓
+Return to dashboard → view past plans anytime
 ```
 
-**Process** (n8n workflow):
-1. Webhook node receives POST from the website
-2. OpenAI node generates a structured 7-day content plan
-3. Edit Fields node formats and validates the JSON response
-4. Respond to Webhook returns the content to the browser
+---
 
-**Output** (displayed in dashboard):
-- 7-day plan with captions, hashtags, story text
-- Branded Instagram post preview
-- PNG export ready to post
+## Generation Limits & Anti-Repeat
+
+Each business can generate **4 content plans per calendar month**. The limit resets on the 1st of each month.
+
+The last 28 post titles (4 plans × 7 posts) are stored and sent to the AI as `previousTitles`. The OpenAI prompt instructs the model to avoid repeating them, keeping content fresh across the full month.
 
 ---
 
