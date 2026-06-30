@@ -49,7 +49,12 @@ export function Navbar({
 }
 
 export function BrandLogo({ className = 'h-8' }: { className?: string }) {
-  return <img alt="PostMate" className={`${className} w-auto object-contain`} src="/postmate-wordmark.png" />
+  return (
+    <span className={`flex items-center gap-2 ${className}`}>
+      <span className="flex size-7 items-center justify-center rounded-lg bg-zinc-950 text-white text-xs font-black">P</span>
+      <span className="text-base font-bold tracking-tight text-zinc-950">PostMate</span>
+    </span>
+  )
 }
 
 export function ButtonLink({
