@@ -51,8 +51,15 @@ export function Navbar({
 export function BrandLogo({ className = 'h-8' }: { className?: string }) {
   return (
     <span className={`flex items-center gap-2 ${className}`}>
-      <span className="flex size-7 items-center justify-center rounded-lg bg-zinc-950 text-white text-xs font-black">P</span>
-      <span className="text-base font-bold tracking-tight text-zinc-950">PostMate</span>
+      <img
+        alt=""
+        aria-hidden
+        className="h-7 w-7 object-contain"
+        src={`${import.meta.env.BASE_URL}favicon.svg`}
+      />
+      <span className="text-base font-bold tracking-tight">
+        <span className="text-zinc-950">Post</span><span style={{ color: '#c64b8c' }}>Mate</span>
+      </span>
     </span>
   )
 }
