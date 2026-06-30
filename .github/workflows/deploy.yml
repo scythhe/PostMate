@@ -38,7 +38,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_N8N_SCRAPE_URL: ${{ secrets.VITE_N8N_SCRAPE_URL }}
           VITE_N8N_GENERATE_URL: ${{ secrets.VITE_N8N_GENERATE_URL }}
-          VITE_BASE_URL: /${{ github.event.repository.name }}/
+          VITE_BASE_URL: /${{ github.event.repository.name || 'PostMate' }}/
 
       - uses: actions/upload-pages-artifact@v3
         with:
