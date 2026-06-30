@@ -9,20 +9,22 @@ import type { DesignTemplate } from '../types'
 export function PostEditor({
   business,
   idea,
+  initialPost,
   onBack,
   onApproved,
 }: {
   business: Business
   idea: ContentIdea
+  initialPost?: Post
   onBack: () => void
   onApproved: (post: Post) => void
 }) {
-  const [post, setPost]           = useState<Post | null>(null)
-  const [loading, setLoading]     = useState(true)
+  const [post, setPost]           = useState<Post | null>(initialPost ?? null)
+  const [loading, setLoading]     = useState(!initialPost)
   const [saving, setSaving]       = useState(false)
   const [showPreview, setShowPreview] = useState(false)
   const [copied, setCopied]       = useState(false)
-  const [schedDate, setSchedDate] = useState('')
+  const [schedDate, setSchedDate] = useState(initialPost?.scheduledDate ?? '')
   const [error, setError]         = useState('')
 
   async function generate() {
@@ -35,7 +37,7 @@ export function PostEditor({
     finally { setLoading(false) }
   }
 
-  useEffect(() => { generate() }, [])
+  useEffect(() => { if (!initialPost) generate() }, [])
 
   async function handleApprove() {
     if (!post) return

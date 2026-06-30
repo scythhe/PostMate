@@ -1,4 +1,4 @@
-import { Calendar, ChevronLeft, ChevronRight, Edit2, Plus, Settings, Sparkles, Tag, Trash2, X, Zap } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Edit2, ExternalLink, Plus, Settings, Sparkles, Tag, Trash2, X, Zap } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { deletePost, getPosts, getTrialDaysLeft, saveBusiness } from '../lib/storage'
 import type { Business, Post, User } from '../types'
@@ -9,12 +9,14 @@ export function BusinessDashboard({
   onGetIdeas,
   onEditBusiness,
   onBusinessChange,
+  onOpenPost,
 }: {
   business: Business
   user: User
   onGetIdeas: () => void
   onEditBusiness: () => void
   onBusinessChange: (b: Business) => void
+  onOpenPost: (post: Post) => void
 }) {
   const [biz, setBiz]   = useState(init)
   const [posts, setPosts] = useState<Post[]>([])
@@ -114,7 +116,7 @@ export function BusinessDashboard({
               <EmptyState icon={<Zap />} title="No drafts" sub="Generate a post from an idea — it lands here as a draft." cta="Get ideas" onCta={onGetIdeas} />
             ) : (
               <div className="grid gap-3 sm:grid-cols-2">
-                {drafts.map(p => <PostCard key={p.id} post={p} onDelete={() => handleDeletePost(p.id)} />)}
+                {drafts.map(p => <PostCard key={p.id} post={p} onDelete={() => handleDeletePost(p.id)} onOpen={() => onOpenPost(p)} />)}
               </div>
             )}
           </div>
@@ -244,7 +246,7 @@ function CalendarPostChip({ post, onDelete }: { post: Post; onDelete: () => void
 
 // ── Post card ──────────────────────────────────────────────────
 
-function PostCard({ post, onDelete }: { post: Post; onDelete: () => void }) {
+function PostCard({ post, onDelete, onOpen }: { post: Post; onDelete: () => void; onOpen: () => void }) {
   const TYPE_COLORS: Record<string, string> = {
     Post: 'bg-zinc-100 text-zinc-600', Reel: 'bg-purple-100 text-purple-700',
     Story: 'bg-amber-100 text-amber-700', Carousel: 'bg-blue-100 text-blue-700',
@@ -261,11 +263,16 @@ function PostCard({ post, onDelete }: { post: Post; onDelete: () => void }) {
         </button>
       </div>
       <p className="mt-2 text-xs text-zinc-400 line-clamp-2 leading-relaxed">{post.shortCaption}</p>
-      <div className="mt-3 flex gap-2">
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[post.postType] ?? ''}`}>{post.postType}</span>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${post.contentCategory === 'design' ? 'bg-emerald-50 text-emerald-700' : 'bg-orange-50 text-orange-700'}`}>
-          {post.contentCategory === 'design' ? '🎨 Graphic' : '📷 Capture'}
-        </span>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <div className="flex gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_COLORS[post.postType] ?? ''}`}>{post.postType}</span>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${post.contentCategory === 'design' ? 'bg-emerald-50 text-emerald-700' : 'bg-orange-50 text-orange-700'}`}>
+            {post.contentCategory === 'design' ? '🎨 Graphic' : '📷 Capture'}
+          </span>
+        </div>
+        <button type="button" onClick={onOpen} className="flex items-center gap-1 text-xs font-semibold text-emerald-600 hover:text-emerald-800 transition">
+          <ExternalLink size={11} /> Open
+        </button>
       </div>
     </div>
   )

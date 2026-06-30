@@ -20,6 +20,7 @@ function App() {
   const [user,         setUser]         = useState<User | null>(null)
   const [business,     setBusiness]     = useState<Business | null>(null)
   const [selectedIdea, setSelectedIdea] = useState<ContentIdea | null>(null)
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [booting,      setBooting]      = useState(true)
 
   useEffect(() => {
@@ -96,8 +97,9 @@ function App() {
       <PostEditor
         business={business}
         idea={selectedIdea}
-        onBack={() => setView('ideas')}
-        onApproved={(_post: Post) => setView('dashboard')}
+        initialPost={selectedPost ?? undefined}
+        onBack={() => { setSelectedPost(null); setView(selectedPost ? 'dashboard' : 'ideas') }}
+        onApproved={() => { setSelectedPost(null); setView('dashboard') }}
       />
     </Shell>
   )
@@ -110,6 +112,11 @@ function App() {
         onGetIdeas={() => setView('ideas')}
         onEditBusiness={() => setView('onboarding')}
         onBusinessChange={setBusiness}
+        onOpenPost={post => {
+          setSelectedPost(post)
+          setSelectedIdea({ id: post.id, type: post.ideaType, title: post.title, hook: post.shortCaption, postType: post.postType, contentCategory: post.contentCategory, emoji: post.emoji })
+          setView('post-editor')
+        }}
       />
     </Shell>
   )
