@@ -1,9 +1,9 @@
-import { ArrowLeft, Check, Copy, Download, Loader2, RefreshCw, Sparkles, WandSparkles } from 'lucide-react'
+import { ArrowLeft, Check, Copy, Download, ExternalLink, Loader2, RefreshCw, Sparkles, WandSparkles } from 'lucide-react'
 import { toPng } from 'html-to-image'
 import { useEffect, useRef, useState } from 'react'
 import { InstagramPostPreview } from './InstagramPostPreview'
 import { generateContent } from '../lib/aiGenerator'
-import type { BusinessProfile, ContentIdea, GeneratedContent, GeneratedDay, QuickProfile, SavedPost } from '../types'
+import type { BusinessProfile, ContentIdea, GeneratedContent, GeneratedDay, InputProfile, SavedPost } from '../types'
 
 export function Dashboard({
   profile,
@@ -11,7 +11,7 @@ export function Dashboard({
   onSavedPostsChange,
   onBack,
 }: {
-  profile: QuickProfile
+  profile: InputProfile
   savedPosts: SavedPost[]
   onSavedPostsChange: (posts: SavedPost[]) => void
   onBack: () => void
@@ -88,7 +88,7 @@ export function Dashboard({
         canvasHeight: 1800,
       })
       const a = document.createElement('a')
-      a.download = `postmate-${slugify(profile.businessName)}-${slugify(selectedDay.title)}.png`
+      a.download = `postmate-${slugify(content.businessName)}-${slugify(selectedDay.title)}.png`
       a.href = dataUrl
       a.click()
     } finally {
@@ -117,8 +117,22 @@ export function Dashboard({
                 </span>
               )}
             </div>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight">{profile.businessName}</h1>
-            <p className="mt-1 text-sm text-zinc-500">{profile.location}</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight">{content.businessName}</h1>
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-zinc-500">
+              <a
+                className="flex items-center gap-1 transition hover:text-emerald-700"
+                href={profile.websiteUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <ExternalLink size={12} /> {profile.websiteUrl.replace(/^https?:\/\/(www\.)?/, '')}
+              </a>
+              {profile.instagramHandle && (
+                <span className="flex items-center gap-1">
+                  {profile.instagramHandle.startsWith('@') ? profile.instagramHandle : `@${profile.instagramHandle}`}
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -366,11 +380,11 @@ function ErrorState({ onBack, onRetry }: { onBack: () => void; onRetry: () => vo
   )
 }
 
-function profileToBusiness(profile: QuickProfile, content: GeneratedContent): BusinessProfile {
+function profileToBusiness(profile: InputProfile, content: GeneratedContent): BusinessProfile {
   return {
-    businessName: profile.businessName,
+    businessName: content.businessName,
     industry: 'Local business',
-    location: profile.location,
+    location: profile.instagramHandle || profile.websiteUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0],
     tone: content.tone,
     targetAudience: content.targetAudience,
     offer: content.offer,

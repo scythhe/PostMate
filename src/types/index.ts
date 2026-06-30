@@ -1,9 +1,9 @@
 import type { LucideIcon } from 'lucide-react'
 
-export type QuickProfile = {
-  businessName: string
-  description: string
-  location: string
+export type InputProfile = {
+  websiteUrl: string
+  instagramHandle: string
+  recentCaptions: string
   primaryColor: string
   secondaryColor: string
 }
@@ -49,6 +49,7 @@ export type GeneratedDay = {
 
 export type GeneratedContent = {
   days: GeneratedDay[]
+  businessName: string
   tone: string
   offer: string
   targetAudience: string

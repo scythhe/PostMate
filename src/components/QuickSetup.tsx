@@ -1,7 +1,7 @@
-import { ArrowLeft, ArrowRight, Sparkles } from 'lucide-react'
+import { ArrowLeft, ArrowRight, AtSign, Globe, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import type { QuickProfile } from '../types'
+import type { InputProfile } from '../types'
 import { BrandLogo } from './Navbar'
 
 export function QuickSetup({
@@ -9,28 +9,29 @@ export function QuickSetup({
   onBack,
   onTryDemo,
 }: {
-  onGenerate: (profile: QuickProfile) => void
+  onGenerate: (profile: InputProfile) => void
   onBack: () => void
   onTryDemo: () => void
 }) {
-  const [form, setForm] = useState<QuickProfile>({
-    businessName: '',
-    description: '',
-    location: '',
+  const [form, setForm] = useState<InputProfile>({
+    websiteUrl: '',
+    instagramHandle: '',
+    recentCaptions: '',
     primaryColor: '#1F352D',
     secondaryColor: '#C9A45C',
   })
 
-  const update = (field: keyof QuickProfile, value: string) =>
+  const update = (field: keyof InputProfile, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }))
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    if (!form.businessName.trim() || !form.description.trim()) return
-    onGenerate(form)
+    if (!form.websiteUrl.trim()) return
+    const url = form.websiteUrl.startsWith('http') ? form.websiteUrl : `https://${form.websiteUrl}`
+    onGenerate({ ...form, websiteUrl: url })
   }
 
-  const isReady = form.businessName.trim().length > 0 && form.description.trim().length > 10
+  const isReady = form.websiteUrl.trim().length > 4
 
   return (
     <div className="min-h-screen bg-[#f7f4ee]">
@@ -55,31 +56,46 @@ export function QuickSetup({
           <div className="max-w-lg">
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700">Setup</p>
             <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-              Describe your business. PostMate does the rest.
+              Paste your website. PostMate reads the rest.
             </h1>
             <p className="mt-5 text-lg leading-8 text-zinc-600">
-              No long forms. No uploads. Just tell us what you do in a sentence or two and we'll generate a full week of Instagram content instantly.
+              PostMate scrapes your website and Instagram to understand your brand voice, offer, and audience — then generates a full week of on-brand content automatically.
             </p>
 
             <div className="mt-8 grid gap-4">
-              <StepBadge number={1} label="Describe your business in a few sentences" />
-              <StepBadge number={2} label="Click generate — PostMate builds your plan" />
-              <StepBadge number={3} label="Get 7 days of captions, hashtags, and a post preview" />
+              <FlowStep
+                icon={<Globe size={16} />}
+                label="1"
+                title="Paste your website URL"
+                description="PostMate fetches and reads your site to understand your business"
+              />
+              <FlowStep
+                icon={<AtSign size={16} />}
+                label="2"
+                title="Add your Instagram handle"
+                description="PostMate scrapes your latest posts to match your existing tone and style"
+              />
+              <FlowStep
+                icon={<Sparkles size={16} />}
+                label="3"
+                title="AI generates your plan"
+                description="7-day content plan with captions, hashtags, and a branded post preview"
+              />
             </div>
 
             <div className="mt-8 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">Example input</p>
-              <p className="mt-3 text-sm leading-6 text-zinc-600 italic">
-                "A boutique Georgian bakery in Batumi specializing in traditional adjarian breads, honey pastries, and local wine. Cozy atmosphere, great for weekend brunches and tourists."
-              </p>
-            </div>
-
-            <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-emerald-700">You'll get</p>
               <ul className="mt-3 grid gap-2 text-sm text-zinc-600">
-                {['7-day Instagram content plan', 'Full captions + short versions', 'Hashtag sets for each post', 'Story text variations', 'Export-ready post preview', 'PNG download'].map((item) => (
+                {[
+                  '7-day Instagram content plan',
+                  'Captions written in your brand voice',
+                  'Hashtag sets matching your niche',
+                  'Story text for each post',
+                  'Export-ready branded post preview',
+                  'PNG download',
+                ].map((item) => (
                   <li className="flex items-center gap-2" key={item}>
-                    <span className="size-1.5 rounded-full bg-emerald-700" />
+                    <span className="size-1.5 rounded-full bg-emerald-700 shrink-0" />
                     {item}
                   </li>
                 ))}
@@ -93,38 +109,46 @@ export function QuickSetup({
             onSubmit={handleSubmit}
           >
             <h2 className="text-2xl font-semibold tracking-tight">Your business</h2>
-            <p className="mt-1 text-sm text-zinc-500">Takes about 30 seconds to fill out.</p>
+            <p className="mt-1 text-sm text-zinc-500">Takes about 20 seconds to fill out.</p>
 
             <div className="mt-6 grid gap-5">
-              <Field label="Business name *" hint="Your official brand name">
+              <Field
+                label="Website URL *"
+                hint="Your homepage — PostMate will scrape it automatically"
+                icon={<Globe size={15} className="text-zinc-400" />}
+              >
                 <input
-                  className="h-11 rounded-md border border-zinc-200 bg-[#f7f4ee] px-3 text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10"
-                  placeholder="e.g. Café Botanica"
-                  value={form.businessName}
-                  onChange={(e) => update('businessName', e.target.value)}
+                  className="h-11 rounded-md border border-zinc-200 bg-[#f7f4ee] pl-9 pr-3 text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10"
+                  placeholder="https://yourbusiness.com"
+                  type="url"
+                  value={form.websiteUrl}
+                  onChange={(e) => update('websiteUrl', e.target.value)}
                   required
                 />
               </Field>
 
               <Field
-                label="Describe your business *"
-                hint="What you offer, who you serve, what makes you different"
+                label="Instagram handle"
+                hint="Public profile — PostMate will scrape your latest posts for tone matching"
+                icon={<AtSign size={15} className="text-zinc-400" />}
               >
-                <textarea
-                  className="min-h-[120px] resize-none rounded-md border border-zinc-200 bg-[#f7f4ee] px-3 py-3 text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10"
-                  placeholder="e.g. We're a plant-based café in Tbilisi serving organic coffee and seasonal lunch bowls to remote workers and health-conscious locals..."
-                  value={form.description}
-                  onChange={(e) => update('description', e.target.value)}
-                  required
+                <input
+                  className="h-11 rounded-md border border-zinc-200 bg-[#f7f4ee] pl-9 pr-3 text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10"
+                  placeholder="@yourbusiness"
+                  value={form.instagramHandle}
+                  onChange={(e) => update('instagramHandle', e.target.value)}
                 />
               </Field>
 
-              <Field label="City / Location" hint="Where your business is based">
-                <input
-                  className="h-11 rounded-md border border-zinc-200 bg-[#f7f4ee] px-3 text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10"
-                  placeholder="e.g. Tbilisi, Georgia"
-                  value={form.location}
-                  onChange={(e) => update('location', e.target.value)}
+              <Field
+                label="Recent captions (optional)"
+                hint="Paste 3–5 of your recent post captions if Instagram scraping is blocked"
+              >
+                <textarea
+                  className="min-h-[100px] resize-none rounded-md border border-zinc-200 bg-[#f7f4ee] px-3 py-3 text-zinc-950 outline-none transition focus:border-emerald-800 focus:ring-4 focus:ring-emerald-800/10 text-sm"
+                  placeholder="Paste your recent Instagram captions here to help PostMate match your tone..."
+                  value={form.recentCaptions}
+                  onChange={(e) => update('recentCaptions', e.target.value)}
                 />
               </Field>
 
@@ -148,7 +172,7 @@ export function QuickSetup({
                 disabled={!isReady}
                 type="submit"
               >
-                Generate my content <ArrowRight size={17} />
+                Scrape &amp; generate <ArrowRight size={17} />
               </button>
               <button
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-zinc-200 px-5 text-sm font-semibold text-zinc-700 transition hover:border-zinc-300 hover:bg-stone-50"
@@ -158,6 +182,10 @@ export function QuickSetup({
                 <Sparkles size={16} /> Try with demo restaurant
               </button>
             </div>
+
+            <p className="mt-4 text-center text-xs text-zinc-400">
+              PostMate only reads publicly available content. No login required.
+            </p>
           </form>
         </div>
       </div>
@@ -168,17 +196,26 @@ export function QuickSetup({
 function Field({
   label,
   hint,
+  icon,
   children,
 }: {
   label: string
   hint?: string
+  icon?: React.ReactNode
   children: React.ReactNode
 }) {
   return (
     <label className="grid gap-1.5 text-sm font-medium text-zinc-700">
       {label}
       {hint ? <span className="text-xs font-normal text-zinc-400">{hint}</span> : null}
-      {children}
+      {icon ? (
+        <span className="relative">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">{icon}</span>
+          {children}
+        </span>
+      ) : (
+        children
+      )}
     </label>
   )
 }
@@ -203,7 +240,7 @@ function ColorField({
           onChange={(e) => onChange(e.target.value)}
         />
         <input
-          className="min-w-0 flex-1 bg-transparent px-3 text-zinc-950 outline-none"
+          className="min-w-0 flex-1 bg-transparent px-3 text-zinc-950 outline-none text-sm"
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -212,13 +249,29 @@ function ColorField({
   )
 }
 
-function StepBadge({ number, label }: { number: number; label: string }) {
+function FlowStep({
+  icon,
+  label,
+  title,
+  description,
+}: {
+  icon: React.ReactNode
+  label: string
+  title: string
+  description: string
+}) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="grid size-8 shrink-0 place-items-center rounded-md bg-emerald-950 text-sm font-bold text-white">
-        {number}
-      </span>
-      <span className="text-sm font-medium text-zinc-700">{label}</span>
+    <div className="flex gap-4 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-col items-center gap-1">
+        <span className="grid size-8 shrink-0 place-items-center rounded-md bg-emerald-950 text-white text-xs font-bold">
+          {label}
+        </span>
+        <span className="text-zinc-400">{icon}</span>
+      </div>
+      <div>
+        <p className="font-semibold text-zinc-950 text-sm">{title}</p>
+        <p className="mt-0.5 text-xs leading-5 text-zinc-500">{description}</p>
+      </div>
     </div>
   )
 }

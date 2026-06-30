@@ -4,15 +4,15 @@ import { LandingPage } from './components/LandingPage'
 import { BrandLogo } from './components/Navbar'
 import { QuickSetup } from './components/QuickSetup'
 import { SavedPosts } from './components/SavedPosts'
-import type { BusinessProfile, QuickProfile, SavedPost } from './types'
+import type { BusinessProfile, InputProfile, SavedPost } from './types'
 
 type AppView = 'landing' | 'setup' | 'dashboard' | 'saved'
 
-const DEMO_PROFILE: QuickProfile = {
-  businessName: 'Maison Marani',
-  description:
-    'A luxury Georgian restaurant in Tbilisi offering a chef-led supra tasting menu with rare Kakheti wine pairings, for food lovers, boutique hotel guests, and wine enthusiasts.',
-  location: 'Tbilisi, Georgia',
+const DEMO_PROFILE: InputProfile = {
+  websiteUrl: 'https://maisonmarani.ge',
+  instagramHandle: '@maisonmarani',
+  recentCaptions:
+    'The truffle khachapuri has arrived for the season. Reserve your table before it sells out.\n\nA supra for two, a wine list built from rare Kakheti amphora wines. This is what Friday evenings are for.\n\nOur chef sources every ingredient locally. The difference is on your plate.',
   primaryColor: '#1F352D',
   secondaryColor: '#C9A45C',
 }
@@ -27,14 +27,14 @@ function loadSavedPosts(): SavedPost[] {
 
 function App() {
   const [view, setView] = useState<AppView>('landing')
-  const [profile, setProfile] = useState<QuickProfile | null>(null)
+  const [profile, setProfile] = useState<InputProfile | null>(null)
   const [savedPosts, setSavedPosts] = useState<SavedPost[]>(loadSavedPosts)
 
   useEffect(() => {
     localStorage.setItem('postmate_saved', JSON.stringify(savedPosts))
   }, [savedPosts])
 
-  const handleGenerate = (p: QuickProfile) => {
+  const handleGenerate = (p: InputProfile) => {
     setProfile(p)
     setView('dashboard')
   }
@@ -50,12 +50,12 @@ function App() {
 
   if (view === 'saved' && profile) {
     const stubBusiness: BusinessProfile = {
-      businessName: profile.businessName,
+      businessName: profile.websiteUrl.replace(/^https?:\/\/(www\.)?/, '').split('/')[0],
       industry: 'Local business',
-      location: profile.location,
+      location: profile.instagramHandle || '',
       tone: 'Professional',
       targetAudience: 'Local customers',
-      offer: profile.description.slice(0, 80),
+      offer: profile.recentCaptions.slice(0, 80) || profile.websiteUrl,
       primaryColor: profile.primaryColor,
       secondaryColor: profile.secondaryColor,
     }

@@ -12,16 +12,22 @@ PostMate solves a real problem: local business owners (restaurants, cafés, salo
 
 ## AI Agent / Workflow
 
-PostMate uses an **n8n webhook workflow** as its AI backbone:
+PostMate uses an **n8n webhook workflow** as its AI backbone. The user only pastes a URL — everything else is automated:
 
 ```
-User input (business name + description)
+User input: website URL + Instagram handle
         ↓
 POST → n8n Webhook
         ↓
-OpenAI GPT node (generates 7-day plan as JSON)
+HTTP Request node → scrape business website (GET websiteUrl)
         ↓
-Edit Fields node (formats response)
+Code node → extract readable text from HTML
+        ↓
+HTTP Request node → scrape Instagram public profile (GET instagram.com/{handle})
+        ↓
+Code node → extract latest post captions
+        ↓
+OpenAI node → analyze website + captions → generate 7-day plan as JSON
         ↓
 Respond to Webhook
         ↓
@@ -36,9 +42,40 @@ VITE_N8N_WEBHOOK_URL=https://your-n8n-instance/webhook/postmate
 
 If no webhook is configured, PostMate falls back to local template-based generation so the app always works during demos.
 
-### n8n System Prompt (OpenAI node)
+### n8n OpenAI System Prompt
 
-> You are PostMate, an Instagram content expert for local businesses. Generate a 7-day content plan as valid JSON with fields: `days` (array of 7), `tone`, `offer`, `targetAudience`. Each day object must have: `day`, `postType`, `title`, `description`, `cta`, `caption`, `shortCaption`, `hashtags` (array of 6), `storyText`.
+```
+You are PostMate, an Instagram content expert for local businesses.
+
+You have been given:
+- Website content scraped from the business's homepage
+- Recent Instagram captions from their profile (if available)
+
+Analyze the brand voice, offer, audience, and style. Then generate a 7-day Instagram content plan.
+
+Return ONLY valid JSON:
+{
+  "businessName": "detected business name",
+  "tone": "brand tone in 3-4 words",
+  "offer": "main product or service",
+  "targetAudience": "who this business serves",
+  "days": [
+    {
+      "day": "Monday",
+      "postType": "Post|Reel|Story|Carousel",
+      "title": "Post title (max 8 words)",
+      "description": "Content direction in 1-2 sentences",
+      "cta": "Action phrase (3-5 words)",
+      "caption": "Instagram caption with 2-3 sentences and 1-2 emojis",
+      "shortCaption": "One sentence version",
+      "hashtags": ["#six", "#relevant", "#hashtags", "#for", "#local", "#reach"],
+      "storyText": "Story text, max 12 words"
+    }
+  ]
+}
+
+Generate exactly 7 days: Monday through Sunday.
+```
 
 ---
 
