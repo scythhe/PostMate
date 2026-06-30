@@ -4,5 +4,5 @@ import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: (process.env.VITE_BASE_URL as string) || '/',
+  base: process.env.NODE_ENV === 'production' ? '/PostMate/' : '/',
 })
